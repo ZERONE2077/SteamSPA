@@ -1,0 +1,5 @@
+# PowerShell 临时 / 输出文件
+*.log
+*.tmp
+Thumbs.db
+desktop.ini
