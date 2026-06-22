@@ -1,308 +1,399 @@
-﻿#Requires -RunAsAdministrator
+﻿#Requires -Version 5.1
+#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Steam 破解工具卸载清理脚本
+    SteamSPA clean engine.
 .DESCRIPTION
-    清理以下脚本曾下载、注册、修改的所有痕迹：
-      - 142785900.ps1
-      - steam-run.com.ps1
-      - cdks.run.ps1
-      - steam.run.ps1
-      - steam.icu.ps1
-    包含：Steam 目录注入 DLL、注册表键值、AppData 目录、
-          Defender 排除项、临时文件等
+    Reads targets.json and performs scan or cleanup for leftover traces.
+    Default mode is scan. Add -Clean to remove detected targets.
 #>
+[CmdletBinding()]
+param(
+    [switch]$Clean,
+    [switch]$NoBackup,
+    [switch]$NoPause,
+    [string[]]$Only,
+    [ValidateSet('low', 'medium', 'high')]
+    [string[]]$Risk = @('low', 'medium'),
+    [string]$TargetsPath
+)
 
-Clear-Host
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Stop'
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Steam 破解工具 卸载 / 清理脚本"         -ForegroundColor Cyan
-Write-Host "  覆盖脚本: 142785900 / steam-run.com"    -ForegroundColor Cyan
-Write-Host "           cdks.run / steam.run / steam.icu" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
+$scriptRoot = $PSScriptRoot
+if ([string]::IsNullOrWhiteSpace($scriptRoot)) {
+    $scriptRoot = Split-Path -Parent $PSCommandPath
+}
+if ([string]::IsNullOrWhiteSpace($scriptRoot)) {
+    $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+if ([string]::IsNullOrWhiteSpace($TargetsPath)) {
+    $TargetsPath = Join-Path $scriptRoot 'targets.json'
+}
 
-# ─── 辅助函数 ────────────────────────────────────────────────────────────────
+function Write-Status {
+    param([string]$Message, [ConsoleColor]$Color = 'Gray')
+    Write-Host $Message -ForegroundColor $Color
+}
 
-function Remove-SafeItem {
-    param([string]$Path, [switch]$Recurse)
-    if (Test-Path $Path) {
-        try {
-            if ($Recurse) {
-                Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
-            }
-            else {
-                Remove-Item -Path $Path -Force -ErrorAction Stop
-            }
-            Write-Host "  [已删除] $Path" -ForegroundColor Green
-            return $true
+function Resolve-Template {
+    param(
+        [string]$Text,
+        [hashtable]$Variables
+    )
+
+    $resolved = $Text
+    foreach ($key in $Variables.Keys) {
+        $resolved = $resolved.Replace('${' + $key + '}', [string]$Variables[$key])
+    }
+
+    return [Environment]::ExpandEnvironmentVariables($resolved)
+}
+
+function ConvertTo-SafeName {
+    param([string]$Text)
+    $safe = $Text
+    foreach ($char in [System.IO.Path]::GetInvalidFileNameChars()) {
+        $safe = $safe.Replace($char, '_')
+    }
+    return $safe.Trim().TrimEnd('.')
+}
+
+function Get-SteamPath {
+    try {
+        $path = (Get-ItemProperty -Path 'HKCU:\Software\Valve\Steam' -ErrorAction Stop).SteamPath
+        if ($path -and (Test-Path -LiteralPath $path -PathType Container)) {
+            return $path
         }
-        catch {
-            Write-Host "  [失败]   $Path — $($_.Exception.Message)" -ForegroundColor Red
+    }
+    catch {}
+
+    return $null
+}
+
+function Get-Variables {
+    return @{
+        APPDATA      = $env:APPDATA
+        LOCALAPPDATA = $env:LOCALAPPDATA
+        ProgramData  = $env:ProgramData
+        ScriptRoot   = $scriptRoot
+        SteamPath    = (Get-SteamPath)
+        TEMP         = $env:TEMP
+        USERPROFILE  = $env:USERPROFILE
+    }
+}
+
+function Read-Targets {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "未找到 targets.json: $Path"
+    }
+
+    return Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+}
+
+function Test-ActionExists {
+    param($Action, [hashtable]$Variables)
+
+    switch ($Action.type) {
+        'file' {
+            $path = Resolve-Template -Text $Action.path -Variables $Variables
+            return [bool](Test-Path -LiteralPath $path)
+        }
+        'registry-key' {
+            return [bool](Test-Path -Path $Action.path)
+        }
+        'registry-value' {
+            if (-not (Test-Path -Path $Action.path)) { return $false }
+            return $null -ne (Get-ItemProperty -Path $Action.path -Name $Action.name -ErrorAction SilentlyContinue)
+        }
+        'defender-exclusion-path' {
+            $pref = Get-MpPreference -ErrorAction SilentlyContinue
+            if (-not $pref) { return $false }
+            $path = Resolve-Template -Text $Action.path -Variables $Variables
+            return $pref.ExclusionPath -contains $path
+        }
+        'defender-exclusion-extension' {
+            $pref = Get-MpPreference -ErrorAction SilentlyContinue
+            return $pref -and ($pref.ExclusionExtension -contains $Action.name)
+        }
+        'process' {
+            return $null -ne (Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($Action.name)) -ErrorAction SilentlyContinue)
+        }
+        'service' {
+            return $null -ne (Get-Service -Name $Action.name -ErrorAction SilentlyContinue)
+        }
+        'task' {
+            return $null -ne (Get-ScheduledTask -TaskName $Action.name -ErrorAction SilentlyContinue)
+        }
+        default {
             return $false
         }
     }
-    else {
-        Write-Host "  [不存在] $Path" -ForegroundColor DarkGray
-        return $false
+}
+
+function Remove-Action {
+    param(
+        $Action,
+        [hashtable]$Variables,
+        [string]$BackupRoot,
+        [switch]$NoBackup
+    )
+
+    switch ($Action.type) {
+        'file' {
+            $path = Resolve-Template -Text $Action.path -Variables $Variables
+            if (-not (Test-Path -LiteralPath $path)) { return 'skipped' }
+            if (-not $NoBackup) {
+                $backupName = Join-Path $BackupRoot (ConvertTo-SafeName $path)
+                $parent = Split-Path -Parent $backupName
+                if ($parent -and -not (Test-Path -LiteralPath $parent)) {
+                    New-Item -ItemType Directory -Path $parent -Force | Out-Null
+                }
+                Copy-Item -LiteralPath $path -Destination $backupName -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            Remove-Item -LiteralPath $path -Force -Recurse:([bool]$Action.recurse)
+            return 'removed'
+        }
+        'registry-key' {
+            if (Test-Path -Path $Action.path) {
+                Remove-Item -Path $Action.path -Force -Recurse:([bool]$Action.recurse)
+                return 'removed'
+            }
+            return 'skipped'
+        }
+        'registry-value' {
+            if ((Test-Path -Path $Action.path) -and ($null -ne (Get-ItemProperty -Path $Action.path -Name $Action.name -ErrorAction SilentlyContinue))) {
+                Remove-ItemProperty -Path $Action.path -Name $Action.name -Force
+                return 'removed'
+            }
+            return 'skipped'
+        }
+        'defender-exclusion-path' {
+            $path = Resolve-Template -Text $Action.path -Variables $Variables
+            Remove-MpPreference -ExclusionPath $path
+            return 'removed'
+        }
+        'defender-exclusion-extension' {
+            Remove-MpPreference -ExclusionExtension $Action.name
+            return 'removed'
+        }
+        'process' {
+            Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($Action.name)) -ErrorAction SilentlyContinue | Stop-Process -Force
+            return 'removed'
+        }
+        'service' {
+            Stop-Service -Name $Action.name -Force
+            return 'removed'
+        }
+        'task' {
+            Unregister-ScheduledTask -TaskName $Action.name -Confirm:$false
+            return 'removed'
+        }
+        default {
+            throw "不支持的动作类型: $($Action.type)"
+        }
     }
 }
 
-function Remove-RegistryValue {
-    param([string]$KeyPath, [string]$Name)
-    if (Test-Path $KeyPath) {
-        $prop = Get-ItemProperty -Path $KeyPath -Name $Name -ErrorAction SilentlyContinue
-        if ($null -ne $prop) {
-            try {
-                Remove-ItemProperty -Path $KeyPath -Name $Name -Force -ErrorAction Stop
-                Write-Host "  [已删除] 注册表值  $KeyPath\$Name" -ForegroundColor Green
+function Format-ActionLabel {
+    param($Action, [hashtable]$Variables)
+
+    switch ($Action.type) {
+        'file' { return Resolve-Template -Text $Action.path -Variables $Variables }
+        'registry-key' { return $Action.path }
+        'registry-value' { return "$($Action.path)\$($Action.name)" }
+        'defender-exclusion-path' { return "Defender Path: $(Resolve-Template -Text $Action.path -Variables $Variables)" }
+        'defender-exclusion-extension' { return "Defender Extension: $($Action.name)" }
+        'process' { return "Process: $($Action.name)" }
+        'service' { return "Service: $($Action.name)" }
+        'task' { return "Task: $($Action.name)" }
+        default { return $Action.type }
+    }
+}
+
+function Save-Report {
+    param(
+        [object]$Report,
+        [string]$Root
+    )
+
+    if (-not (Test-Path -LiteralPath $Root)) {
+        New-Item -ItemType Directory -Path $Root -Force | Out-Null
+    }
+
+    $path = Join-Path $Root ("report-{0}.json" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    $Report | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $path -Encoding UTF8
+    return $path
+}
+
+Clear-Host
+Write-Status '========================================' Cyan
+Write-Status '  SteamSPA 假入库残留扫描 / 清理' Cyan
+Write-Status '========================================' Cyan
+Write-Host ''
+
+if ($Clean) {
+    Write-Status '当前模式: 清理' Yellow
+}
+else {
+    Write-Status '当前模式: 扫描（不会删除任何内容）' Yellow
+}
+
+$variables = Get-Variables
+if ($variables.SteamPath) {
+    Write-Status "Steam 目录: $($variables.SteamPath)" Green
+}
+else {
+    Write-Status '未检测到 Steam 目录。' Yellow
+}
+
+$targets = Read-Targets -Path $TargetsPath
+$backupRoot = Join-Path $scriptRoot (Join-Path 'temp\backups' (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$logRoot = Join-Path $scriptRoot 'temp\logs'
+
+$report = [ordered]@{
+    startedAt = (Get-Date).ToString('o')
+    mode      = if ($Clean) { 'clean' } else { 'scan' }
+    targets   = @()
+    summary   = [ordered]@{
+        detected = 0
+        removed  = 0
+        failed   = 0
+        skipped  = 0
+    }
+}
+
+$rules = @($targets.rules) | Where-Object {
+    ($_.enabled -ne $false) -and
+    ($Risk -contains $_.risk) -and
+    (-not $Only -or $Only -contains $_.id)
+}
+
+Write-Host ''
+Write-Status "加载规则: $($rules.Count) 条" Cyan
+Write-Host ''
+
+$detectedItems = @()
+
+foreach ($rule in $rules) {
+    Write-Status "[$($rule.id)] $($rule.title)" Yellow
+    $ruleReport = [ordered]@{
+        id      = $rule.id
+        title   = $rule.title
+        risk    = $rule.risk
+        actions = @()
+    }
+
+    $detectedActions = @()
+    foreach ($action in @($rule.actions)) {
+        $label = Format-ActionLabel -Action $action -Variables $variables
+        $exists = Test-ActionExists -Action $action -Variables $variables
+        if ($exists) {
+            $report.summary.detected++
+            $detectedActions += $action
+            $detectedItems += [pscustomobject]@{
+                RuleId = $rule.id
+                RuleTitle = $rule.title
+                Risk = $rule.risk
+                Confirm = ($rule.confirm -eq $true)
+                Action = $action
+                Label = $label
             }
-            catch {
-                Write-Host "  [失败]   注册表值  $KeyPath\$Name — $($_.Exception.Message)" -ForegroundColor Red
-            }
+            Write-Status "  [发现] $label" Green
         }
         else {
-            Write-Host "  [不存在] 注册表值  $KeyPath\$Name" -ForegroundColor DarkGray
+            Write-Status "  [不存在] $label" DarkGray
+        }
+
+        $ruleReport.actions += [ordered]@{
+            type   = $action.type
+            target = $label
+            exists = [bool]$exists
         }
     }
-    else {
-        Write-Host "  [不存在] 注册表键  $KeyPath" -ForegroundColor DarkGray
-    }
+
+    $report.targets += $ruleReport
+    Write-Host ''
 }
 
-# ─── 1. 获取 Steam 路径 ───────────────────────────────────────────────────────
+if ($Clean) {
+    Write-Status '========================================' Cyan
+    Write-Status '  待清理项目汇总' Cyan
+    Write-Status '========================================' Cyan
 
-Write-Host "[步骤 1] 定位 Steam 安装目录..." -ForegroundColor Yellow
-
-$steamRegPath = 'HKCU:\Software\Valve\Steam'
-$steamToolsRegPath = 'HKCU:\Software\Valve\Steamtools'
-$steamPath = $null
-
-try {
-    $steamPath = (Get-ItemProperty -Path $steamRegPath -ErrorAction Stop).SteamPath
-}
-catch {}
-
-if ([string]::IsNullOrWhiteSpace($steamPath) -or -not (Test-Path $steamPath -PathType Container)) {
-    Write-Host "  [警告] 未找到 Steam 安装目录，将跳过 Steam 目录相关清理。" -ForegroundColor Yellow
-    $steamPath = $null
-}
-else {
-    Write-Host "  [找到] Steam 目录: $steamPath" -ForegroundColor Green
-}
-Write-Host ""
-
-# ─── 2. 停止 Steam 进程 ──────────────────────────────────────────────────────
-
-Write-Host "[步骤 2] 强制终止 Steam 进程..." -ForegroundColor Yellow
-
-$steamProcs = Get-Process -Name "steam*" -ErrorAction SilentlyContinue
-if ($steamProcs) {
-    $steamProcs | Stop-Process -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-    # 如果仍在运行则用 taskkill
-    if (Get-Process -Name "steam" -ErrorAction SilentlyContinue) {
-        Start-Process cmd -ArgumentList "/c taskkill /f /im steam.exe" -WindowStyle Hidden -Wait
-    }
-    Write-Host "  [完成] Steam 进程已终止" -ForegroundColor Green
-}
-else {
-    Write-Host "  [跳过] 未检测到运行中的 Steam 进程" -ForegroundColor DarkGray
-}
-Write-Host ""
-
-# ─── 3. 清理 Steam 目录内的注入文件 ─────────────────────────────────────────
-
-Write-Host "[步骤 3] 清理 Steam 目录内的注入 DLL 及配置文件..." -ForegroundColor Yellow
-
-if ($steamPath) {
-    # 所有脚本可能放入 Steam 根目录的文件
-    $steamFiles = @(
-        # 64 位注入 DLL (142785900 / steam-run.com / cdks.run / steam.run / steam.icu)
-        "dwmapi.dll",
-        "xinput1_4.dll",
-        "xinput1_4.dll.old",
-        "xinput1_4.log",
-        "dwmapi.log",
-
-        # 32 位注入 DLL (142785900 / steam-run.com)
-        "hid.dll",
-        "hid.log",
-        "zlib1.dll",
-        "zlib1.log",
-
-        # 旧版残留 (steam.run / cdks.run / steam.icu)
-        "version.dll",
-        "user32.dll",
-        "wtsapi32.dll",
-
-        # Steam Beta 标志 / 配置
-        "steam.cfg",
-        "package\beta",
-
-        # appdata.vdf (64 位路径)
-        "config\appdata.vdf",
-        # appdata.vdf (32 位路径)
-        "appcache\appdata.vdf",
-        # packageinfo (steam.icu)
-        "appcache\packageinfo.vdf"
-    )
-
-    foreach ($f in $steamFiles) {
-        $fullPath = Join-Path $steamPath $f
-        Remove-SafeItem -Path $fullPath
-    }
-}
-else {
-    Write-Host "  [跳过] 无法确定 Steam 目录" -ForegroundColor DarkGray
-}
-Write-Host ""
-
-# ─── 4. 清理注册表 HKCU:\Software\Valve\Steamtools ──────────────────────────
-
-Write-Host "[步骤 4] 清理注册表 Steamtools 键..." -ForegroundColor Yellow
-
-if (Test-Path $steamToolsRegPath) {
-    # 先单独删除各脚本写入的具体值，再整体删除整个键
-    $regValues = @(
-        "packageinfo",    # 142785900 / steam-run.com
-        "steamclient",    # 142785900 / steam-run.com
-        "s",              # 142785900 / steam-run.com
-        "c",              # 142785900 / steam-run.com
-        "iscdkey",        # cdks.run / steam.run
-        "ActivateUnlockMode",
-        "AlwaysStayUnlocked",
-        "notUnlockDepot"
-    )
-    foreach ($v in $regValues) {
-        Remove-RegistryValue -KeyPath $steamToolsRegPath -Name $v
-    }
-
-    # 整体删除整个 Steamtools 键
-    try {
-        Remove-Item -Path $steamToolsRegPath -Recurse -Force -ErrorAction Stop
-        Write-Host "  [已删除] 注册表键 $steamToolsRegPath" -ForegroundColor Green
-    }
-    catch {
-        Write-Host "  [失败]   删除注册表键 $steamToolsRegPath — $($_.Exception.Message)" -ForegroundColor Red
-    }
-}
-else {
-    Write-Host "  [不存在] 注册表键 $steamToolsRegPath" -ForegroundColor DarkGray
-}
-Write-Host ""
-
-# ─── 5. 清理 %APPDATA%\Stool 目录 ────────────────────────────────────────────
-
-Write-Host "[步骤 5] 清理 AppData\Roaming\Stool 目录 (142785900 / steam-run.com)..." -ForegroundColor Yellow
-
-$stoolDir = Join-Path $env:APPDATA "Stool"
-Remove-SafeItem -Path $stoolDir -Recurse
-Write-Host ""
-
-# ─── 6. 清理 %LOCALAPPDATA%\Steam 目录 ───────────────────────────────────────
-
-Write-Host "[步骤 6] 清理 LocalAppData\Steam 目录 (cdks.run / steam.run)..." -ForegroundColor Yellow
-
-$localSteamDir = Join-Path $env:LOCALAPPDATA "steam"
-if (Test-Path $localSteamDir) {
-    Write-Host "  [警告] 发现 $localSteamDir" -ForegroundColor Yellow
-    Write-Host "  该目录由 cdks.run / steam.run 创建，可能含临时数据。" -ForegroundColor Yellow
-    $ans = Read-Host "  确认删除？输入 Y 确认，其他键跳过"
-    if ($ans -eq 'Y' -or $ans -eq 'y') {
-        Remove-SafeItem -Path $localSteamDir -Recurse
+    if ($detectedItems.Count -eq 0) {
+        Write-Status '未发现需要清理的项目。' Green
     }
     else {
-        Write-Host "  [跳过] 保留 $localSteamDir" -ForegroundColor DarkGray
-    }
-}
-else {
-    Write-Host "  [不存在] $localSteamDir" -ForegroundColor DarkGray
-}
-Write-Host ""
-
-# ─── 7. 清理 %LOCALAPPDATA%\Steam\localData.vdf ──────────────────────────────
-
-Write-Host "[步骤 7] 清理 localData.vdf (steam.icu)..." -ForegroundColor Yellow
-
-$localDataVdf = Join-Path $env:LOCALAPPDATA "Steam\localData.vdf"
-Remove-SafeItem -Path $localDataVdf
-Write-Host ""
-
-# ─── 8. 清理 Tencent 缓存目录 ────────────────────────────────────────────────
-
-Write-Host "[步骤 8] 清理 LocalAppData\Microsoft\Tencent 缓存 (cdks.run / steam.run)..." -ForegroundColor Yellow
-
-$tencentCache = Join-Path $env:LOCALAPPDATA "Microsoft\Tencent"
-Remove-SafeItem -Path $tencentCache -Recurse
-Write-Host ""
-
-# ─── 9. 清理临时脚本文件 ──────────────────────────────────────────────────────
-
-Write-Host "[步骤 9] 清理临时脚本文件..." -ForegroundColor Yellow
-
-$tempFiles = @(
-    (Join-Path $env:USERPROFILE "get.ps1"),   # cdks.run / steam.run
-    (Join-Path $PSScriptRoot   "a.ps1")       # 142785900 / steam-run.com
-)
-foreach ($f in $tempFiles) {
-    Remove-SafeItem -Path $f
-}
-Write-Host ""
-
-# ─── 10. 移除 Windows Defender 排除项 ────────────────────────────────────────
-
-Write-Host "[步骤 10] 处理 Windows Defender 排除项..." -ForegroundColor Yellow
-Write-Host "  (142785900 / steam-run.com / steam.icu 曾添加排除项)" -ForegroundColor DarkGray
-
-$ans2 = Read-Host "  是否从 Defender 排除列表中移除 Steam 相关路径？(Y/其他键跳过)"
-if ($ans2 -eq 'Y' -or $ans2 -eq 'y') {
-    $stoolDir2 = Join-Path $env:APPDATA "Stool"
-    try {
-        if ($steamPath) {
-            Remove-MpPreference -ExclusionPath $steamPath -ErrorAction SilentlyContinue
-            Write-Host "  [已移除] 排除路径: $steamPath" -ForegroundColor Green
+        $index = 1
+        foreach ($item in $detectedItems) {
+            $riskColor = switch ($item.Risk) {
+                'high' { 'Red' }
+                'medium' { 'Yellow' }
+                default { 'Gray' }
+            }
+            Write-Host ("[{0}] " -f $index) -NoNewline -ForegroundColor Cyan
+            Write-Host ("{0} / {1} / {2}" -f $item.RuleId, $item.Action.type, $item.Risk) -ForegroundColor $riskColor
+            Write-Status ("    {0}" -f $item.Label) Gray
+            $index++
         }
-        Remove-MpPreference -ExclusionPath $stoolDir2 -ErrorAction SilentlyContinue
-        Write-Host "  [已移除] 排除路径: $stoolDir2" -ForegroundColor Green
 
-        # steam.icu 只排除了路径，未排除扩展名，但 142785900 排除了 exe/dll 扩展名
-        # 注意：移除扩展名排除可能影响系统其他软件，这里只移除 dll/exe 扩展名排除
-        Remove-MpPreference -ExclusionExtension 'exe' -ErrorAction SilentlyContinue
-        Remove-MpPreference -ExclusionExtension 'dll' -ErrorAction SilentlyContinue
-        Write-Host "  [已移除] Defender 扩展名排除: exe、dll" -ForegroundColor Green
+        Write-Host ''
+        Write-Status '上面是本次检测到的全部残留项。' Yellow
+        Write-Status '按 Enter 确认删除以上项目；输入 N 后回车取消。' Yellow
+        $answer = Read-Host '确认'
+
+        if ($answer -eq 'N' -or $answer -eq 'n') {
+            $report.summary.skipped += $detectedItems.Count
+            Write-Status '已取消清理，未删除任何项目。' Yellow
+        }
+        else {
+            Write-Host ''
+            Write-Status '开始清理...' Cyan
+            foreach ($item in $detectedItems) {
+                try {
+                    $result = Remove-Action -Action $item.Action -Variables $variables -BackupRoot $backupRoot -NoBackup:$NoBackup
+                    if ($result -eq 'removed') {
+                        $report.summary.removed++
+                        Write-Status "  [已删除] $($item.Label)" Green
+                    }
+                    else {
+                        $report.summary.skipped++
+                        Write-Status "  [跳过] $($item.Label)" DarkGray
+                    }
+                }
+                catch {
+                    $report.summary.failed++
+                    Write-Status "  [失败] $($item.Label) - $($_.Exception.Message)" Red
+                }
+            }
+        }
     }
-    catch {
-        Write-Host "  [失败]   移除 Defender 排除项: $($_.Exception.Message)" -ForegroundColor Red
-    }
+
+    Write-Host ''
 }
-else {
-    Write-Host "  [跳过] 保留 Defender 排除设置" -ForegroundColor DarkGray
+
+$reportPath = Save-Report -Report $report -Root $logRoot
+
+Write-Status '========================================' Cyan
+Write-Status '  完成' Cyan
+Write-Status '========================================' Cyan
+Write-Status "发现: $($report.summary.detected)" Gray
+Write-Status "删除: $($report.summary.removed)" Gray
+Write-Status "失败: $($report.summary.failed)" Gray
+Write-Status "跳过: $($report.summary.skipped)" Gray
+Write-Status "报告: $reportPath" Gray
+
+if ($Clean -and -not $NoBackup) {
+    Write-Status "备份: $backupRoot" Gray
 }
-Write-Host ""
 
-# ─── 完成汇总 ─────────────────────────────────────────────────────────────────
+Write-Host ''
+Write-Status '建议后续在 Steam 中验证游戏文件完整性，并重启 Steam。' Yellow
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  清理完成！" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "已覆盖清理范围：" -ForegroundColor Yellow
-Write-Host "  ✔ Steam 目录注入 DLL（dwmapi / xinput1_4 / hid / zlib1 / version / user32 / wtsapi32）" -ForegroundColor Gray
-Write-Host "  ✔ Steam 配置文件（steam.cfg / appdata.vdf / package\beta / packageinfo.vdf）" -ForegroundColor Gray
-Write-Host "  ✔ 注册表键 HKCU:\Software\Valve\Steamtools" -ForegroundColor Gray
-Write-Host "  ✔ %APPDATA%\Stool 工具目录" -ForegroundColor Gray
-Write-Host "  ✔ %LOCALAPPDATA%\Steam\localData.vdf" -ForegroundColor Gray
-Write-Host "  ✔ %LOCALAPPDATA%\Microsoft\Tencent 缓存" -ForegroundColor Gray
-Write-Host "  ✔ 临时脚本文件（get.ps1 / a.ps1）" -ForegroundColor Gray
-Write-Host ""
-Write-Host "建议后续操作：" -ForegroundColor Yellow
-Write-Host "  1. 在 Steam 中对游戏执行「验证游戏文件完整性」" -ForegroundColor Gray
-Write-Host "  2. 重新启动 Steam 客户端" -ForegroundColor Gray
-Write-Host "  3. 若 Steam 仍有异常，可考虑重新安装 Steam" -ForegroundColor Gray
-Write-Host ""
-
-Read-Host "按 Enter 键退出"
+if (-not $NoPause) {
+    Read-Host '按 Enter 键退出'
+}
