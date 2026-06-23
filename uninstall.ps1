@@ -322,14 +322,13 @@ function Save-Report {
 }
 
 Clear-Host
-Write-Status '  ____  _____ _____    _    __  __   ____  ____    _    ' Cyan
-Write-Status ' / ___||_   _| ____|  / \  |  \/  | / ___||  _ \  / \   ' Cyan
-Write-Status ' \___ \  | | |  _|   / _ \ | |\/| | \___ \| |_) |/ _ \  ' Cyan
-Write-Status '  ___) | | | | |___ / ___ \| |  | |  ___) |  __// ___ \ ' Cyan
-Write-Status ' |____/  |_| |_____/_/   \_\_|  |_| |____/|_|  /_/   \_\' Cyan
+Write-Status '  ____  _____ _____    _    __  __   ____  ____    _    ' Green
+Write-Status ' / ___||_   _| ____|  / \  |  \/  | / ___||  _ \  / \   ' Green
+Write-Status ' \___ \  | | |  _|   / _ \ | |\/| | \___ \| |_) |/ _ \  ' Green
+Write-Status '  ___) | | | | |___ / ___ \| |  | |  ___) |  __// ___ \ ' Green
+Write-Status ' |____/  |_| |_____/_/   \_\_|  |_| |____/|_|  /_/   \_\' Green
 Write-Host ''
 Write-Status (T '57uZIFN0ZWFtIOWBmuS4qiBTUEHvvIzmtJflubLlh4DvvIzmtJfpppnpppnjgII=') Cyan
-Write-Status (T '5b2T5YmN5qih5byP77ya5YWI5omr5o+P77yM56Gu6K6k5ZCO5riF55CG44CC') Yellow
 Write-Host ''
 $variables = Get-Variables
 if ($variables.SteamPath) {
@@ -430,8 +429,10 @@ else {
         Write-Host ''
     }
 
-    Write-Status (T '5o+Q56S677ya5riF55CG5ZCO5Y+v6IO96ZyA6KaB6YeN5paw55m75b2VIFN0ZWFt77yM6K+356Gu5L+d5bey6K6w5L2P6LSm5Y+35a+G56CB77yM5bm25bey57uR5a6a5omL5py65Luk54mM44CC') Yellow
-    Write-Status (T '5riF55CG5ZCO55qE6LSm5oi355m75b2V6Zeu6aKY6K+36Ieq6KGM6Kej5Yaz44CC') Yellow
+    Write-Status (T '5o+Q56S677ya') Yellow
+    Write-Status (T 'MSDmuIXnkIblkI7vvIzlj6/og73pnIDopoHph43mlrDnmbvlvZUgU1RFQU0=') Yellow
+    Write-Status (T 'MiDlv5jorrDotKbmiLfjgIHlr4bnoIHjgIHku6TniYznrYnor7foh6rooYzop6PlhrM=') Yellow
+    Write-Status (T 'MyDmnKzlt6XlhbfkuI3kvJrkuqfnlJ/ku7vkvZXotJ/pnaLlvbHlk43vvIzmuLjmiI/lh7rpl67popjor7fpqozor4HlrozmlbTmgKc=') Yellow
     Write-Host ''
     Write-Status (T '5oyJIEVudGVyIOS7o+ihqOWQjOaEj+S7peS4iuivtOaYju+8jOW5tuW8gOWni+a4heeQhu+8m+i+k+WFpSBOIOWQjuWbnui9puWPlua2iOOAgg==') Yellow
     $answer = Read-Host (T '56Gu6K6k')
