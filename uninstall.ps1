@@ -14,7 +14,6 @@ $NoBackup = $false
 $NoPause = $false
 $Only = @()
 $Risk = @('low', 'medium')
-$TargetsPath = $null
 
 for ($i = 0; $i -lt $args.Count; $i++) {
     switch -Regex ($args[$i]) {
@@ -34,11 +33,6 @@ for ($i = 0; $i -lt $args.Count; $i++) {
             }
             continue
         }
-        '^-TargetsPath$' {
-            $i++
-            if ($i -lt $args.Count) { $TargetsPath = [string]$args[$i] }
-            continue
-        }
     }
 }
 
@@ -52,7 +46,7 @@ if ($PSVersionTable.PSVersion -lt [version]'5.1') {
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if ($Clean -and -not $isAdmin) {
-    throw '清理模式需要以管理员身份运行 PowerShell。请右键 PowerShell，选择“以管理员身份运行”，然后重新执行命令。'
+    throw 'Clean mode requires Administrator PowerShell. Please run PowerShell as Administrator and retry.'
 }
 
 $scriptRoot = $PSScriptRoot
@@ -69,495 +63,8 @@ if (-not (Test-Path -LiteralPath $scriptRoot)) {
     New-Item -ItemType Directory -Path $scriptRoot -Force | Out-Null
 }
 
-$EmbeddedTargetsJson = @'
-{
-    "$schema":  "./targets.schema.json",
-    "version":  1,
-    "meta":  {
-                 "project":  "SteamSPA",
-                 "description":  "Steam 假入库残留清理清单。每条规则描述一个来源脚本所留下的痕迹。"
-             },
-    "rules":  [
-                  {
-                      "id":  "steam-inject-dlls",
-                      "title":  "Steam 目录注入 DLL",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1",
-                                      "scripts/steam.work/steam.icu.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4.dll.old"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4.log"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi.log"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\hid.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\hid.log"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\zlib1.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\zlib1.log"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\version.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\user32.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\wtsapi32.dll"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "steam-config-files",
-                      "title":  "Steam 配置文件 / Beta 标志 / appdata 缓存",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.work/steam.icu.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\steam.cfg"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\package\\beta"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\config\\appdata.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\appcache\\appdata.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\appcache\\packageinfo.vdf"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "registry-steamtools",
-                      "title":  "注册表 HKCU\\Software\\Valve\\Steamtools",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "packageinfo"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "steamclient"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "s"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "c"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "iscdkey"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "ActivateUnlockMode"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "AlwaysStayUnlocked"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "notUnlockDepot"
-                                      },
-                                      {
-                                          "type":  "registry-key",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "appdata-stool",
-                      "title":  "%APPDATA%\\Stool 工具目录",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${APPDATA}\\Stool",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "localappdata-steam",
-                      "title":  "%LOCALAPPDATA%\\steam 目录 (需确认)",
-                      "sources":  [
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\steam",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "localdata-vdf",
-                      "title":  "%LOCALAPPDATA%\\Steam\\localData.vdf",
-                      "sources":  [
-                                      "scripts/steam.work/steam.icu.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\Steam\\localData.vdf"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "tencent-cache",
-                      "title":  "%LOCALAPPDATA%\\Microsoft\\Tencent 缓存",
-                      "sources":  [
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\Microsoft\\Tencent",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "temp-scripts",
-                      "title":  "下载用的临时脚本",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1",
-                                      "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${USERPROFILE}\\get.ps1"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${ScriptRoot}\\a.ps1"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${TEMP}\\1.ps1"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "defender-exclusions",
-                      "title":  "Windows Defender 排除项 (需确认)",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.work/steam.icu.001.ps1",
-                                      "scripts/cdk.ruku.run/a.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${APPDATA}\\Stool"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-extension",
-                                          "name":  "exe"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-extension",
-                                          "name":  "dll"
-                                      },
-                                      {
-                                          "name":  ".exe",
-                                          "type":  "defender-exclusion-extension"
-                                      },
-                                      {
-                                          "name":  ".dll",
-                                          "type":  "defender-exclusion-extension"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "smartscreen-ci-policy-registry",
-                      "title":  "SmartScreen / CI Policy 相关注册表改动 (需确认)",
-                      "sources":  [
-                                      "scripts/cdk.ruku.run/a.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy",
-                                          "name":  "VerifiedAndReputablePolicyState"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer",
-                                          "name":  "SmartScreenEnabled"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
-                                          "name":  "EnableSmartScreen"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
-                                          "name":  "ConfigureAppInstallControl"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
-                                          "name":  "ConfigureAppInstallControlEnabled"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
-                                          "name":  "EnableSmartScreenInShell"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "startup-steamauthdaemon",
-                      "title":  "启动项 SteamAuthDaemon (需确认)",
-                      "sources":  [
-                                      "scripts/cdk.ruku.run/a.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-                                          "name":  "SteamAuthDaemon"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "process-steam-auth",
-                      "title":  "steam_auth 进程 (需确认)",
-                      "sources":  [
-                                      "scripts/cdk.ruku.run/a.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "process",
-                                          "name":  "steam_auth"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "downloaded-steamcdk-exe",
-                      "title":  "Steam 目录下载的 steamcdk.exe (需确认)",
-                      "sources":  [
-                                      "scripts/cdk.ruku.run/a.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\steamcdk.exe"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "opensteamtool-root-files",
-                      "title":  "OpenSteamTool 根目录文件",
-                      "sources":  [
-                                      "https://github.com/OpenSteam001/OpenSteamTool"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\OpenSteamTool.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\opensteamtool.toml"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "opensteamtool-lua-config",
-                      "title":  "OpenSteamTool Lua 配置目录 (需确认)",
-                      "sources":  [
-                                      "https://github.com/OpenSteam001/OpenSteamTool"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\config\\lua",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "steamking-installed-app",
-                      "title":  "SteamKing 安装本体残留 (需确认)",
-                      "sources":  [
-                                      "D:/Downloads/SteamKing-Setup-1.5.3.exe"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "process",
-                                          "name":  "SteamKing"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "%ProgramFiles%\\SteamKing",
-                                          "recurse":  true
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\SteamKing",
-                                          "recurse":  true
-                                      },
-                                      {
-                                          "type":  "registry-key",
-                                          "path":  "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{A7C3E9F1-2B4D-4F6A-9C8E-1D5F7A3B2E90}_is1",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  }
-              ]
-}
-
+$EmbeddedTargetsJsonBase64 = @'
+ew0KICAgICIkc2NoZW1hIjogICIuL3RhcmdldHMuc2NoZW1hLmpzb24iLA0KICAgICJ2ZXJzaW9uIjogIDEsDQogICAgIm1ldGEiOiAgew0KICAgICAgICAgICAgICAgICAicHJvamVjdCI6ICAiU3RlYW1TUEEiLA0KICAgICAgICAgICAgICAgICAiZGVzY3JpcHRpb24iOiAgIlN0ZWFtIOWBh+WFpeW6k+aui+eVmea4heeQhua4heWNleOAguavj+adoeinhOWImeaPj+i/sOS4gOS4quadpea6kOiEmuacrOaJgOeVmeS4i+eahOeXlei/ueOAgiINCiAgICAgICAgICAgICB9LA0KICAgICJydWxlcyI6ICBbDQogICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgImlkIjogICJzdGVhbS1pbmplY3QtZGxscyIsDQogICAgICAgICAgICAgICAgICAgICAgInRpdGxlIjogICJTdGVhbSDnm67lvZXms6jlhaUgRExMIiwNCiAgICAgICAgICAgICAgICAgICAgICAic291cmNlcyI6ICBbDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vMTQyNzg1OTAwLjAwMS5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS1ydW4uY29tL3N0ZWFtLXJ1bi5jb20uMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDIucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS9zdGVhbS1ydW4uY29tLjAwMy5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS1ydW4uY29tL3N0ZWFtLXJ1bi5jb20uMDA0LnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLnJ1bi9jZGtzLnJ1bi4wMDEucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ucnVuL3N0ZWFtLnJ1bi4wMDEucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ucnVuL3N0ZWFtLnJ1bi4wMDIucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ud29yay9zdGVhbS5pY3UuMDAxLnBzMSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdLA0KICAgICAgICAgICAgICAgICAgICAgICJlbmFibGVkIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgInJpc2siOiAgImxvdyIsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFxkd21hcGkuZGxsIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFx4aW5wdXQxXzQuZGxsIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFx4aW5wdXQxXzQuZGxsLm9sZCINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7U3RlYW1QYXRofVxceGlucHV0MV80LmxvZyINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7U3RlYW1QYXRofVxcZHdtYXBpLmxvZyINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7U3RlYW1QYXRofVxcaGlkLmRsbCINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7U3RlYW1QYXRofVxcaGlkLmxvZyINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7U3RlYW1QYXRofVxcemxpYjEuZGxsIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFx6bGliMS5sb2ciDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke1N0ZWFtUGF0aH1cXHZlcnNpb24uZGxsIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFx1c2VyMzIuZGxsIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFx3dHNhcGkzMi5kbGwiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdDQogICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICJpZCI6ICAic3RlYW0tY29uZmlnLWZpbGVzIiwNCiAgICAgICAgICAgICAgICAgICAgICAidGl0bGUiOiAgIlN0ZWFtIOmFjee9ruaWh+S7tiAvIEJldGEg5qCH5b+XIC8gYXBwZGF0YSDnvJPlrZgiLA0KICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VzIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS8xNDI3ODU5MDAuMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDEucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS9zdGVhbS1ydW4uY29tLjAwMi5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS1ydW4uY29tL3N0ZWFtLXJ1bi5jb20uMDAzLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDQucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ud29yay9zdGVhbS5pY3UuMDAxLnBzMSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdLA0KICAgICAgICAgICAgICAgICAgICAgICJlbmFibGVkIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgInJpc2siOiAgImxvdyIsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFxzdGVhbS5jZmciDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke1N0ZWFtUGF0aH1cXHBhY2thZ2VcXGJldGEiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke1N0ZWFtUGF0aH1cXGNvbmZpZ1xcYXBwZGF0YS52ZGYiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke1N0ZWFtUGF0aH1cXGFwcGNhY2hlXFxhcHBkYXRhLnZkZiINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7U3RlYW1QYXRofVxcYXBwY2FjaGVcXHBhY2thZ2VpbmZvLnZkZiINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0NCiAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgImlkIjogICJyZWdpc3RyeS1zdGVhbXRvb2xzIiwNCiAgICAgICAgICAgICAgICAgICAgICAidGl0bGUiOiAgIuazqOWGjOihqCBIS0NVXFxTb2Z0d2FyZVxcVmFsdmVcXFN0ZWFtdG9vbHMiLA0KICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VzIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS8xNDI3ODU5MDAuMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDEucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS9zdGVhbS1ydW4uY29tLjAwMi5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS1ydW4uY29tL3N0ZWFtLXJ1bi5jb20uMDAzLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDQucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ucnVuL2Nka3MucnVuLjAwMS5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS5ydW4vc3RlYW0ucnVuLjAwMS5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS5ydW4vc3RlYW0ucnVuLjAwMi5wczEiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXSwNCiAgICAgICAgICAgICAgICAgICAgICAiZW5hYmxlZCI6ICB0cnVlLA0KICAgICAgICAgICAgICAgICAgICAgICJyaXNrIjogICJsb3ciLA0KICAgICAgICAgICAgICAgICAgICAgICJhY3Rpb25zIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgInJlZ2lzdHJ5LXZhbHVlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICJIS0NVOlxcU29mdHdhcmVcXFZhbHZlXFxTdGVhbXRvb2xzIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjogICJwYWNrYWdlaW5mbyINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgInJlZ2lzdHJ5LXZhbHVlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICJIS0NVOlxcU29mdHdhcmVcXFZhbHZlXFxTdGVhbXRvb2xzIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjogICJzdGVhbWNsaWVudCINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgInJlZ2lzdHJ5LXZhbHVlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICJIS0NVOlxcU29mdHdhcmVcXFZhbHZlXFxTdGVhbXRvb2xzIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjogICJzIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAicmVnaXN0cnktdmFsdWUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIkhLQ1U6XFxTb2Z0d2FyZVxcVmFsdmVcXFN0ZWFtdG9vbHMiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiAgImMiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJyZWdpc3RyeS12YWx1ZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiSEtDVTpcXFNvZnR3YXJlXFxWYWx2ZVxcU3RlYW10b29scyIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFtZSI6ICAiaXNjZGtleSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgInJlZ2lzdHJ5LXZhbHVlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICJIS0NVOlxcU29mdHdhcmVcXFZhbHZlXFxTdGVhbXRvb2xzIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjogICJBY3RpdmF0ZVVubG9ja01vZGUiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJyZWdpc3RyeS12YWx1ZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiSEtDVTpcXFNvZnR3YXJlXFxWYWx2ZVxcU3RlYW10b29scyIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFtZSI6ICAiQWx3YXlzU3RheVVubG9ja2VkIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAicmVnaXN0cnktdmFsdWUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIkhLQ1U6XFxTb2Z0d2FyZVxcVmFsdmVcXFN0ZWFtdG9vbHMiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiAgIm5vdFVubG9ja0RlcG90Ig0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAicmVnaXN0cnkta2V5IiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICJIS0NVOlxcU29mdHdhcmVcXFZhbHZlXFxTdGVhbXRvb2xzIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZWN1cnNlIjogIHRydWUNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0NCiAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgImlkIjogICJhcHBkYXRhLXN0b29sIiwNCiAgICAgICAgICAgICAgICAgICAgICAidGl0bGUiOiAgIiVBUFBEQVRBJVxcU3Rvb2wg5bel5YW355uu5b2VIiwNCiAgICAgICAgICAgICAgICAgICAgICAic291cmNlcyI6ICBbDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vMTQyNzg1OTAwLjAwMS5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS1ydW4uY29tL3N0ZWFtLXJ1bi5jb20uMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDIucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS9zdGVhbS1ydW4uY29tLjAwMy5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS1ydW4uY29tL3N0ZWFtLXJ1bi5jb20uMDA0LnBzMSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdLA0KICAgICAgICAgICAgICAgICAgICAgICJlbmFibGVkIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgInJpc2siOiAgImxvdyIsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtBUFBEQVRBfVxcU3Rvb2wiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInJlY3Vyc2UiOiAgdHJ1ZQ0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQ0KICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAiaWQiOiAgImxvY2FsYXBwZGF0YS1zdGVhbSIsDQogICAgICAgICAgICAgICAgICAgICAgInRpdGxlIjogICIlTE9DQUxBUFBEQVRBJVxcc3RlYW0g55uu5b2VICjpnIDnoa7orqQpIiwNCiAgICAgICAgICAgICAgICAgICAgICAic291cmNlcyI6ICBbDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLnJ1bi9jZGtzLnJ1bi4wMDEucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ucnVuL3N0ZWFtLnJ1bi4wMDEucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ucnVuL3N0ZWFtLnJ1bi4wMDIucHMxIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0sDQogICAgICAgICAgICAgICAgICAgICAgImVuYWJsZWQiOiAgdHJ1ZSwNCiAgICAgICAgICAgICAgICAgICAgICAicmlzayI6ICAibWVkaXVtIiwNCiAgICAgICAgICAgICAgICAgICAgICAiY29uZmlybSI6ICB0cnVlLA0KICAgICAgICAgICAgICAgICAgICAgICJhY3Rpb25zIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7TE9DQUxBUFBEQVRBfVxcc3RlYW0iLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInJlY3Vyc2UiOiAgdHJ1ZQ0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQ0KICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAiaWQiOiAgImxvY2FsZGF0YS12ZGYiLA0KICAgICAgICAgICAgICAgICAgICAgICJ0aXRsZSI6ICAiJUxPQ0FMQVBQREFUQSVcXFN0ZWFtXFxsb2NhbERhdGEudmRmIiwNCiAgICAgICAgICAgICAgICAgICAgICAic291cmNlcyI6ICBbDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLndvcmsvc3RlYW0uaWN1LjAwMS5wczEiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXSwNCiAgICAgICAgICAgICAgICAgICAgICAiZW5hYmxlZCI6ICB0cnVlLA0KICAgICAgICAgICAgICAgICAgICAgICJyaXNrIjogICJsb3ciLA0KICAgICAgICAgICAgICAgICAgICAgICJhY3Rpb25zIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7TE9DQUxBUFBEQVRBfVxcU3RlYW1cXGxvY2FsRGF0YS52ZGYiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdDQogICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICJpZCI6ICAidGVuY2VudC1jYWNoZSIsDQogICAgICAgICAgICAgICAgICAgICAgInRpdGxlIjogICIlTE9DQUxBUFBEQVRBJVxcTWljcm9zb2Z0XFxUZW5jZW50IOe8k+WtmCIsDQogICAgICAgICAgICAgICAgICAgICAgInNvdXJjZXMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS5ydW4vY2Rrcy5ydW4uMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLnJ1bi9zdGVhbS5ydW4uMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLnJ1bi9zdGVhbS5ydW4uMDAyLnBzMSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdLA0KICAgICAgICAgICAgICAgICAgICAgICJlbmFibGVkIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgInJpc2siOiAgIm1lZGl1bSIsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtMT0NBTEFQUERBVEF9XFxNaWNyb3NvZnRcXFRlbmNlbnQiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInJlY3Vyc2UiOiAgdHJ1ZQ0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQ0KICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAiaWQiOiAgInRlbXAtc2NyaXB0cyIsDQogICAgICAgICAgICAgICAgICAgICAgInRpdGxlIjogICLkuIvovb3nlKjnmoTkuLTml7bohJrmnKwiLA0KICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VzIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS8xNDI3ODU5MDAuMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDEucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS9zdGVhbS1ydW4uY29tLjAwMi5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS1ydW4uY29tL3N0ZWFtLXJ1bi5jb20uMDAzLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDQucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ucnVuL2Nka3MucnVuLjAwMS5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS5ydW4vc3RlYW0ucnVuLjAwMS5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS5ydW4vc3RlYW0ucnVuLjAwMi5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9jZGsucnVrdS5ydW4vY2RrLnJ1a3UucnVuLnBzMSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdLA0KICAgICAgICAgICAgICAgICAgICAgICJlbmFibGVkIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgInJpc2siOiAgImxvdyIsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtVU0VSUFJPRklMRX1cXGdldC5wczEiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke1NjcmlwdFJvb3R9XFxhLnBzMSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7VEVNUH1cXDEucHMxIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQ0KICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAiaWQiOiAgImRlZmVuZGVyLWV4Y2x1c2lvbnMiLA0KICAgICAgICAgICAgICAgICAgICAgICJ0aXRsZSI6ICAiV2luZG93cyBEZWZlbmRlciDmjpLpmaTpobkgKOmcgOehruiupCkiLA0KICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VzIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS8xNDI3ODU5MDAuMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDEucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0tcnVuLmNvbS9zdGVhbS1ydW4uY29tLjAwMi5wczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9zdGVhbS1ydW4uY29tL3N0ZWFtLXJ1bi5jb20uMDAzLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL3N0ZWFtLXJ1bi5jb20vc3RlYW0tcnVuLmNvbS4wMDQucHMxIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvc3RlYW0ud29yay9zdGVhbS5pY3UuMDAxLnBzMSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL2Nkay5ydWt1LnJ1bi9hLnBzMSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdLA0KICAgICAgICAgICAgICAgICAgICAgICJlbmFibGVkIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgInJpc2siOiAgImhpZ2giLA0KICAgICAgICAgICAgICAgICAgICAgICJjb25maXJtIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZGVmZW5kZXItZXhjbHVzaW9uLXBhdGgiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7U3RlYW1QYXRofSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImRlZmVuZGVyLWV4Y2x1c2lvbi1wYXRoIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke0FQUERBVEF9XFxTdG9vbCINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImRlZmVuZGVyLWV4Y2x1c2lvbi1leHRlbnNpb24iLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiAgImV4ZSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImRlZmVuZGVyLWV4Y2x1c2lvbi1leHRlbnNpb24iLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiAgImRsbCINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiAgIi5leGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImRlZmVuZGVyLWV4Y2x1c2lvbi1leHRlbnNpb24iDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjogICIuZGxsIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJkZWZlbmRlci1leGNsdXNpb24tZXh0ZW5zaW9uIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQ0KICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAiaWQiOiAgInNtYXJ0c2NyZWVuLWNpLXBvbGljeS1yZWdpc3RyeSIsDQogICAgICAgICAgICAgICAgICAgICAgInRpdGxlIjogICJTbWFydFNjcmVlbiAvIENJIFBvbGljeSDnm7jlhbPms6jlhozooajmlLnliqggKOmcgOehruiupCkiLA0KICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VzIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvY2RrLnJ1a3UucnVuL2EucHMxIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0sDQogICAgICAgICAgICAgICAgICAgICAgImVuYWJsZWQiOiAgdHJ1ZSwNCiAgICAgICAgICAgICAgICAgICAgICAicmlzayI6ICAiaGlnaCIsDQogICAgICAgICAgICAgICAgICAgICAgImNvbmZpcm0iOiAgdHJ1ZSwNCiAgICAgICAgICAgICAgICAgICAgICAiYWN0aW9ucyI6ICBbDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJyZWdpc3RyeS12YWx1ZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiSEtMTTpcXFNZU1RFTVxcQ3VycmVudENvbnRyb2xTZXRcXENvbnRyb2xcXENJXFxQb2xpY3kiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiAgIlZlcmlmaWVkQW5kUmVwdXRhYmxlUG9saWN5U3RhdGUiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJyZWdpc3RyeS12YWx1ZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiSEtMTTpcXFNPRlRXQVJFXFxNaWNyb3NvZnRcXFdpbmRvd3NcXEN1cnJlbnRWZXJzaW9uXFxFeHBsb3JlciIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFtZSI6ICAiU21hcnRTY3JlZW5FbmFibGVkIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAicmVnaXN0cnktdmFsdWUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIkhLTE06XFxTT0ZUV0FSRVxcUG9saWNpZXNcXE1pY3Jvc29mdFxcV2luZG93c1xcU3lzdGVtIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjogICJFbmFibGVTbWFydFNjcmVlbiINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgInJlZ2lzdHJ5LXZhbHVlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICJIS0xNOlxcU09GVFdBUkVcXFBvbGljaWVzXFxNaWNyb3NvZnRcXFdpbmRvd3MgRGVmZW5kZXJcXFNtYXJ0U2NyZWVuIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjogICJDb25maWd1cmVBcHBJbnN0YWxsQ29udHJvbCINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgInJlZ2lzdHJ5LXZhbHVlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICJIS0xNOlxcU09GVFdBUkVcXFBvbGljaWVzXFxNaWNyb3NvZnRcXFdpbmRvd3MgRGVmZW5kZXJcXFNtYXJ0U2NyZWVuIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjogICJDb25maWd1cmVBcHBJbnN0YWxsQ29udHJvbEVuYWJsZWQiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJyZWdpc3RyeS12YWx1ZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiSEtMTTpcXFNPRlRXQVJFXFxQb2xpY2llc1xcTWljcm9zb2Z0XFxXaW5kb3dzIERlZmVuZGVyXFxTbWFydFNjcmVlbiIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFtZSI6ICAiRW5hYmxlU21hcnRTY3JlZW5JblNoZWxsIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQ0KICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAiaWQiOiAgInN0YXJ0dXAtc3RlYW1hdXRoZGFlbW9uIiwNCiAgICAgICAgICAgICAgICAgICAgICAidGl0bGUiOiAgIuWQr+WKqOmhuSBTdGVhbUF1dGhEYWVtb24gKOmcgOehruiupCkiLA0KICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VzIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNjcmlwdHMvY2RrLnJ1a3UucnVuL2EucHMxIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0sDQogICAgICAgICAgICAgICAgICAgICAgImVuYWJsZWQiOiAgdHJ1ZSwNCiAgICAgICAgICAgICAgICAgICAgICAicmlzayI6ICAibWVkaXVtIiwNCiAgICAgICAgICAgICAgICAgICAgICAiY29uZmlybSI6ICB0cnVlLA0KICAgICAgICAgICAgICAgICAgICAgICJhY3Rpb25zIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgInJlZ2lzdHJ5LXZhbHVlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICJIS0NVOlxcU29mdHdhcmVcXE1pY3Jvc29mdFxcV2luZG93c1xcQ3VycmVudFZlcnNpb25cXFJ1biIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFtZSI6ICAiU3RlYW1BdXRoRGFlbW9uIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQ0KICAgICAgICAgICAgICAgICAgfSwNCiAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAiaWQiOiAgInByb2Nlc3Mtc3RlYW0tYXV0aCIsDQogICAgICAgICAgICAgICAgICAgICAgInRpdGxlIjogICJzdGVhbV9hdXRoIOi/m+eoiyAo6ZyA56Gu6K6kKSIsDQogICAgICAgICAgICAgICAgICAgICAgInNvdXJjZXMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic2NyaXB0cy9jZGsucnVrdS5ydW4vYS5wczEiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXSwNCiAgICAgICAgICAgICAgICAgICAgICAiZW5hYmxlZCI6ICB0cnVlLA0KICAgICAgICAgICAgICAgICAgICAgICJyaXNrIjogICJtZWRpdW0iLA0KICAgICAgICAgICAgICAgICAgICAgICJjb25maXJtIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAicHJvY2VzcyIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFtZSI6ICAic3RlYW1fYXV0aCINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0NCiAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgImlkIjogICJkb3dubG9hZGVkLXN0ZWFtY2RrLWV4ZSIsDQogICAgICAgICAgICAgICAgICAgICAgInRpdGxlIjogICJTdGVhbSDnm67lvZXkuIvovb3nmoQgc3RlYW1jZGsuZXhlICjpnIDnoa7orqQpIiwNCiAgICAgICAgICAgICAgICAgICAgICAic291cmNlcyI6ICBbDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzY3JpcHRzL2Nkay5ydWt1LnJ1bi9hLnBzMSINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdLA0KICAgICAgICAgICAgICAgICAgICAgICJlbmFibGVkIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgInJpc2siOiAgImhpZ2giLA0KICAgICAgICAgICAgICAgICAgICAgICJjb25maXJtIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFxzdGVhbWNkay5leGUiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdDQogICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICJpZCI6ICAib3BlbnN0ZWFtdG9vbC1yb290LWZpbGVzIiwNCiAgICAgICAgICAgICAgICAgICAgICAidGl0bGUiOiAgIk9wZW5TdGVhbVRvb2wg5qC555uu5b2V5paH5Lu2IiwNCiAgICAgICAgICAgICAgICAgICAgICAic291cmNlcyI6ICBbDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJodHRwczovL2dpdGh1Yi5jb20vT3BlblN0ZWFtMDAxL09wZW5TdGVhbVRvb2wiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXSwNCiAgICAgICAgICAgICAgICAgICAgICAiZW5hYmxlZCI6ICB0cnVlLA0KICAgICAgICAgICAgICAgICAgICAgICJyaXNrIjogICJsb3ciLA0KICAgICAgICAgICAgICAgICAgICAgICJhY3Rpb25zIjogIFsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAgImZpbGUiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIiR7U3RlYW1QYXRofVxcT3BlblN0ZWFtVG9vbC5kbGwiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke1N0ZWFtUGF0aH1cXGR3bWFwaS5kbGwiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke1N0ZWFtUGF0aH1cXHhpbnB1dDFfNC5kbGwiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke1N0ZWFtUGF0aH1cXG9wZW5zdGVhbXRvb2wudG9tbCINCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0NCiAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgImlkIjogICJvcGVuc3RlYW10b29sLWx1YS1jb25maWciLA0KICAgICAgICAgICAgICAgICAgICAgICJ0aXRsZSI6ICAiT3BlblN0ZWFtVG9vbCBMdWEg6YWN572u55uu5b2VICjpnIDnoa7orqQpIiwNCiAgICAgICAgICAgICAgICAgICAgICAic291cmNlcyI6ICBbDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJodHRwczovL2dpdGh1Yi5jb20vT3BlblN0ZWFtMDAxL09wZW5TdGVhbVRvb2wiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXSwNCiAgICAgICAgICAgICAgICAgICAgICAiZW5hYmxlZCI6ICB0cnVlLA0KICAgICAgICAgICAgICAgICAgICAgICJyaXNrIjogICJtZWRpdW0iLA0KICAgICAgICAgICAgICAgICAgICAgICJjb25maXJtIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJHtTdGVhbVBhdGh9XFxjb25maWdcXGx1YSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicmVjdXJzZSI6ICB0cnVlDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdDQogICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgew0KICAgICAgICAgICAgICAgICAgICAgICJpZCI6ICAic3RlYW1raW5nLWluc3RhbGxlZC1hcHAiLA0KICAgICAgICAgICAgICAgICAgICAgICJ0aXRsZSI6ICAiU3RlYW1LaW5nIOWuieijheacrOS9k+aui+eVmSAo6ZyA56Gu6K6kKSIsDQogICAgICAgICAgICAgICAgICAgICAgInNvdXJjZXMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiRDovRG93bmxvYWRzL1N0ZWFtS2luZy1TZXR1cC0xLjUuMy5leGUiDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXSwNCiAgICAgICAgICAgICAgICAgICAgICAiZW5hYmxlZCI6ICB0cnVlLA0KICAgICAgICAgICAgICAgICAgICAgICJyaXNrIjogICJtZWRpdW0iLA0KICAgICAgICAgICAgICAgICAgICAgICJjb25maXJtIjogIHRydWUsDQogICAgICAgICAgICAgICAgICAgICAgImFjdGlvbnMiOiAgWw0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAicHJvY2VzcyIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFtZSI6ICAiU3RlYW1LaW5nIg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICAiZmlsZSIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicGF0aCI6ICAiJVByb2dyYW1GaWxlcyVcXFN0ZWFtS2luZyIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicmVjdXJzZSI6ICB0cnVlDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJmaWxlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwYXRoIjogICIke0xPQ0FMQVBQREFUQX1cXFN0ZWFtS2luZyIsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicmVjdXJzZSI6ICB0cnVlDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogICJyZWdpc3RyeS1rZXkiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInBhdGgiOiAgIkhLTE06XFxTb2Z0d2FyZVxcTWljcm9zb2Z0XFxXaW5kb3dzXFxDdXJyZW50VmVyc2lvblxcVW5pbnN0YWxsXFx7QTdDM0U5RjEtMkI0RC00RjZBLTlDOEUtMUQ1RjdBM0IyRTkwfV9pczEiLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInJlY3Vyc2UiOiAgdHJ1ZQ0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQ0KICAgICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICBdDQp9
 '@
 
 function Write-Status {
@@ -613,16 +120,8 @@ function Get-Variables {
 }
 
 function Read-Targets {
-    param([string]$Path)
-
-    if (-not [string]::IsNullOrWhiteSpace($Path)) {
-        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-            throw "未找到 targets.json: $Path"
-        }
-        return Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
-    }
-
-    return $EmbeddedTargetsJson | ConvertFrom-Json
+    $json = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($EmbeddedTargetsJsonBase64))
+    return $json | ConvertFrom-Json
 }
 
 function Test-ActionExists {
@@ -724,7 +223,7 @@ function Remove-Action {
             return 'removed'
         }
         default {
-            throw "不支持的动作类型: $($Action.type)"
+            throw "Unsupported action type: $($Action.type)"
         }
     }
 }
@@ -762,26 +261,26 @@ function Save-Report {
 
 Clear-Host
 Write-Status '========================================' Cyan
-Write-Status '  SteamSPA 假入库残留扫描 / 清理' Cyan
+Write-Status '  SteamSPA leftover scanner / cleaner' Cyan
 Write-Status '========================================' Cyan
 Write-Host ''
 
 if ($Clean) {
-    Write-Status '当前模式: 清理' Yellow
+    Write-Status 'Mode: clean' Yellow
 }
 else {
-    Write-Status '当前模式: 扫描（不会删除任何内容）' Yellow
+    Write-Status 'Mode: scan (no changes will be made)' Yellow
 }
 
 $variables = Get-Variables
 if ($variables.SteamPath) {
-    Write-Status "Steam 目录: $($variables.SteamPath)" Green
+    Write-Status "Steam path: $($variables.SteamPath)" Green
 }
 else {
-    Write-Status '未检测到 Steam 目录。' Yellow
+    Write-Status 'Steam path was not detected.' Yellow
 }
 
-$targets = Read-Targets -Path $TargetsPath
+$targets = Read-Targets
 $backupRoot = Join-Path $scriptRoot (Join-Path 'temp\backups' (Get-Date -Format 'yyyyMMdd-HHmmss'))
 $logRoot = Join-Path $scriptRoot 'temp\logs'
 
@@ -804,7 +303,7 @@ $rules = @($targets.rules) | Where-Object {
 }
 
 Write-Host ''
-Write-Status "加载规则: $($rules.Count) 条" Cyan
+Write-Status "Loaded rules: $($rules.Count)" Cyan
 Write-Host ''
 
 $detectedItems = @()
@@ -833,10 +332,10 @@ foreach ($rule in $rules) {
                 Action = $action
                 Label = $label
             }
-            Write-Status "  [发现] $label" Green
+            Write-Status "  [FOUND] $label" Green
         }
         else {
-            Write-Status "  [不存在] $label" DarkGray
+            Write-Status "  [MISS] $label" DarkGray
         }
 
         $ruleReport.actions += [ordered]@{
@@ -852,11 +351,11 @@ foreach ($rule in $rules) {
 
 if ($Clean) {
     Write-Status '========================================' Cyan
-    Write-Status '  待清理项目汇总' Cyan
+    Write-Status '  Cleanup summary' Cyan
     Write-Status '========================================' Cyan
 
     if ($detectedItems.Count -eq 0) {
-        Write-Status '未发现需要清理的项目。' Green
+        Write-Status 'No cleanup targets were detected.' Green
     }
     else {
         $index = 1
@@ -873,32 +372,32 @@ if ($Clean) {
         }
 
         Write-Host ''
-        Write-Status '上面是本次检测到的全部残留项。' Yellow
-        Write-Status '按 Enter 确认删除以上项目；输入 N 后回车取消。' Yellow
-        $answer = Read-Host '确认'
+        Write-Status 'The items above are all detected leftovers.' Yellow
+        Write-Status 'Press Enter to remove these items, or type N then Enter to cancel.' Yellow
+        $answer = Read-Host 'Confirm'
 
         if ($answer -eq 'N' -or $answer -eq 'n') {
             $report.summary.skipped += $detectedItems.Count
-            Write-Status '已取消清理，未删除任何项目。' Yellow
+            Write-Status 'Cleanup canceled. Nothing was removed.' Yellow
         }
         else {
             Write-Host ''
-            Write-Status '开始清理...' Cyan
+            Write-Status 'Cleaning...' Cyan
             foreach ($item in $detectedItems) {
                 try {
                     $result = Remove-Action -Action $item.Action -Variables $variables -BackupRoot $backupRoot -NoBackup:$NoBackup
                     if ($result -eq 'removed') {
                         $report.summary.removed++
-                        Write-Status "  [已删除] $($item.Label)" Green
+                        Write-Status "  [REMOVED] $($item.Label)" Green
                     }
                     else {
                         $report.summary.skipped++
-                        Write-Status "  [跳过] $($item.Label)" DarkGray
+                        Write-Status "  [SKIPPED] $($item.Label)" DarkGray
                     }
                 }
                 catch {
                     $report.summary.failed++
-                    Write-Status "  [失败] $($item.Label) - $($_.Exception.Message)" Red
+                    Write-Status "  [FAILED] $($item.Label) - $($_.Exception.Message)" Red
                 }
             }
         }
@@ -910,23 +409,23 @@ if ($Clean) {
 $reportPath = Save-Report -Report $report -Root $logRoot
 
 Write-Status '========================================' Cyan
-Write-Status '  完成' Cyan
+Write-Status '  Done' Cyan
 Write-Status '========================================' Cyan
-Write-Status "发现: $($report.summary.detected)" Gray
-Write-Status "删除: $($report.summary.removed)" Gray
-Write-Status "失败: $($report.summary.failed)" Gray
-Write-Status "跳过: $($report.summary.skipped)" Gray
-Write-Status "报告: $reportPath" Gray
+Write-Status "Detected: $($report.summary.detected)" Gray
+Write-Status "Removed: $($report.summary.removed)" Gray
+Write-Status "Failed: $($report.summary.failed)" Gray
+Write-Status "Skipped: $($report.summary.skipped)" Gray
+Write-Status "Report: $reportPath" Gray
 
 if ($Clean -and -not $NoBackup) {
-    Write-Status "备份: $backupRoot" Gray
+    Write-Status "Backup: $backupRoot" Gray
 }
 
 Write-Host ''
-Write-Status '建议后续在 Steam 中验证游戏文件完整性，并重启 Steam。' Yellow
+Write-Status 'Recommended: verify game files in Steam and restart Steam.' Yellow
 
 if (-not $NoPause) {
-    Read-Host '按 Enter 键退出'
+    Read-Host 'Press Enter to exit'
 }
 
 

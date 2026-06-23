@@ -1,11 +1,14 @@
-# PowerShell 临时 / 输出文件
+# Runtime output
+/temp/
+.temp/
 *.log
 *.tmp
 *.bak
+
+# Windows metadata
 Thumbs.db
 desktop.ini
 
-# 项目运行时产物
-temp/
-.temp/
-
+# Editor / local files
+.vscode/
+.idea/
