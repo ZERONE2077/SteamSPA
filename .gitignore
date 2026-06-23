@@ -12,3 +12,6 @@ desktop.ini
 # Editor / local files
 .vscode/
 .idea/
+
+# Local analysis notes
+/docs/
