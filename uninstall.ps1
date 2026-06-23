@@ -242,6 +242,42 @@ function Format-ActionLabel {
     }
 }
 
+
+function Get-ActionCategory {
+    param($Action)
+
+    switch ($Action.type) {
+        'file' {
+            $p = [string]$Action.path
+            if ($p -match '\\.dll($|\\.)') { return 'dll' }
+            if ($p -match 'steam\.cfg|appdata\.vdf|packageinfo\.vdf|localData\.vdf|package\\\\beta|opensteamtool\.toml|config\\\\lua') { return 'steam-config' }
+            return 'file'
+        }
+        'registry-key' { return 'registry' }
+        'registry-value' { return 'registry' }
+        'defender-exclusion-path' { return 'security' }
+        'defender-exclusion-extension' { return 'security' }
+        'process' { return 'process' }
+        'service' { return 'startup' }
+        'task' { return 'startup' }
+        default { return 'other' }
+    }
+}
+
+function Get-CategoryTitle {
+    param([string]$Category)
+
+    switch ($Category) {
+        'dll' { return T '5rOo5YWlIERMTA==' }
+        'steam-config' { return T 'U3RlYW0g6YWN572u6aG5' }
+        'registry' { return T '5rOo5YaM6KGo' }
+        'startup' { return T '5ZCv5Yqo6aG5IC8g5pyN5YqhIC8g6K6h5YiS5Lu75Yqh' }
+        'security' { return T '5a6J5YWo5o6S6Zmk6aG5IC8g57O757uf562W55Wl' }
+        'process' { return T '5ZCO5Y+w6am755WZ6L+b56iL' }
+        'file' { return T '5paH5Lu2IC8g55uu5b2V5q6L55WZ' }
+        default { return T '5YW25LuW' }
+    }
+}
 function Save-Report {
     param(
         [object]$Report,
@@ -258,13 +294,15 @@ function Save-Report {
 }
 
 Clear-Host
-Write-Status '========================================' Cyan
-Write-Status (T 'ICBTdGVhbVNQQSDlgYflhaXlupPmrovnlZnmiavmj48gLyDmuIXnkIY=') Cyan
-Write-Status '========================================' Cyan
+Write-Status '  ____  _____ _____    _    __  __   ____  ____    _    ' Cyan
+Write-Status ' / ___||_   _| ____|  / \  |  \/  | / ___||  _ \  / \   ' Cyan
+Write-Status ' \___ \  | | |  _|   / _ \ | |\/| | \___ \| |_) |/ _ \  ' Cyan
+Write-Status '  ___) | | | | |___ / ___ \| |  | |  ___) |  __// ___ \ ' Cyan
+Write-Status ' |____/  |_| |_____/_/   \_\_|  |_| |____/|_|  /_/   \_\' Cyan
 Write-Host ''
-
-Write-Status (T '5b2T5YmN5qih5byPOiDlhYjmiavmj4/vvIznoa7orqTlkI7muIXnkIY=') Yellow
-
+Write-Status (T '57uZIFN0ZWFtIOWBmuS4qiBTUEHvvIzmtJflubLlh4DvvIzmtJfpppnpppnjgII=') Cyan
+Write-Status (T '5b2T5YmN5qih5byP77ya5YWI5omr5o+P77yM56Gu6K6k5ZCO5riF55CG44CC') Yellow
+Write-Host ''
 $variables = Get-Variables
 if ($variables.SteamPath) {
     Write-Status ((T 'U3RlYW0g55uu5b2VOiA=') + $variables.SteamPath) Green
@@ -302,7 +340,6 @@ Write-Host ''
 $detectedItems = @()
 
 foreach ($rule in $rules) {
-    Write-Status "[$($rule.id)] $($rule.title)" Yellow
     $ruleReport = [ordered]@{
         id      = $rule.id
         title   = $rule.title
@@ -324,11 +361,8 @@ foreach ($rule in $rules) {
                 Confirm = ($rule.confirm -eq $true)
                 Action = $action
                 Label = $label
+                Category = (Get-ActionCategory -Action $action)
             }
-            Write-Status ((T 'ICBb5Y+R546wXSA=') + $label) Green
-        }
-        else {
-            Write-Status ((T 'ICBb5LiN5a2Y5ZyoXSA=') + $label) DarkGray
         }
 
         $ruleReport.actions += [ordered]@{
@@ -339,36 +373,46 @@ foreach ($rule in $rules) {
     }
 
     $report.targets += $ruleReport
-    Write-Host ''
 }
 
 Write-Status '========================================' Cyan
-Write-Status (T 'ICDlvoXmuIXnkIbpobnnm67msYfmgLs=') Cyan
+Write-Status (T 'ICDmuIXnkIbpobnmgLvnu5M=') Cyan
 Write-Status '========================================' Cyan
 
 if ($detectedItems.Count -eq 0) {
     Write-Status (T '5pyq5Y+R546w6ZyA6KaB5riF55CG55qE6aG555uu44CC') Green
 }
 else {
-    $index = 1
-    foreach ($item in $detectedItems) {
-        $riskColor = switch ($item.Risk) {
-            'high' { 'Red' }
-            'medium' { 'Yellow' }
-            default { 'Gray' }
+    Write-Status ((T '5bey6K+G5Yir5YiwIA==') + $detectedItems.Count + (T 'IOmhueaui+eVmQ==')) Red
+    Write-Host ''
+
+    $categoryOrder = @('dll', 'steam-config', 'registry', 'startup', 'security', 'process', 'file', 'other')
+    foreach ($category in $categoryOrder) {
+        $items = @($detectedItems | Where-Object { $_.Category -eq $category })
+        if ($items.Count -eq 0) { continue }
+
+        Write-Status ((Get-CategoryTitle -Category $category) + ' (' + $items.Count + ')') Yellow
+        $index = 1
+        foreach ($item in $items) {
+            Write-Host ('  [{0}] ' -f $index) -NoNewline -ForegroundColor Cyan
+            Write-Host ("{0} / {1} / {2}" -f $item.RuleId, $item.Action.type, $item.Risk) -ForegroundColor Red
+            Write-Status ("      {0}" -f $item.Label) Red
+            $index++
         }
-        Write-Host ("[{0}] " -f $index) -NoNewline -ForegroundColor Cyan
-        Write-Host ("{0} / {1} / {2}" -f $item.RuleId, $item.Action.type, $item.Risk) -ForegroundColor $riskColor
-        Write-Status ("    {0}" -f $item.Label) Gray
-        $index++
+        Write-Host ''
     }
 
+    Write-Status (T '5o+Q56S677ya5riF55CG5ZCO5Y+v6IO96ZyA6KaB6YeN5paw55m75b2VIFN0ZWFt77yM6K+356Gu5L+d5bey6K6w5L2P6LSm5Y+35a+G56CB77yM5bm25bey57uR5a6a5omL5py65Luk54mM44CC') Yellow
+    Write-Status (T '5riF55CG5ZCO55qE6LSm5oi355m75b2V6Zeu6aKY6K+36Ieq6KGM6Kej5Yaz44CC') Yellow
     Write-Host ''
-    Write-Status (T '5LiK6Z2i5piv5pys5qyh5qOA5rWL5Yiw55qE5YWo6YOo5q6L55WZ6aG544CC') Yellow
-    Write-Status (T '6L6T5YWlIFkg5ZCO5Zue6L2m5byA5aeL5riF55CG77yb5YW25LuW6L6T5YWl55u05o6l6YCA5Ye677yM5LiN5Lya5Yig6Zmk5Lu75L2V5YaF5a6544CC') Yellow
-    $answer = Read-Host (T '5piv5ZCm5riF55CG')
+    Write-Status (T '5oyJIEVudGVyIOS7o+ihqOWQjOaEj+S7peS4iuivtOaYju+8jOW5tuW8gOWni+a4heeQhu+8m+i+k+WFpSBOIOWQjuWbnui9puWPlua2iOOAgg==') Yellow
+    $answer = Read-Host (T '56Gu6K6k')
 
-    if ($answer -eq 'Y' -or $answer -eq 'y') {
+    if ($answer -eq 'N' -or $answer -eq 'n') {
+        $report.summary.skipped += $detectedItems.Count
+        Write-Status (T '5bey5Y+W5raI5riF55CG77yM5pyq5Yig6Zmk5Lu75L2V6aG555uu44CC') Yellow
+    }
+    else {
         $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
         if (-not $isAdmin) {
             throw (T '5riF55CG6ZyA6KaB5Lul566h55CG5ZGY6Lqr5Lu96L+Q6KGMIFBvd2VyU2hlbGzjgILor7flj7PplK4gUG93ZXJTaGVsbO+8jOmAieaLqeKAnOS7peeuoeeQhuWRmOi6q+S7vei/kOihjOKAne+8jOeEtuWQjumHjeaWsOaJp+ihjOWRveS7pOOAgg==')
@@ -393,10 +437,6 @@ else {
                 Write-Status ((T 'ICBb5aSx6LSlXSA=') + $item.Label + ' - ' + $_.Exception.Message) Red
             }
         }
-    }
-    else {
-        $report.summary.skipped += $detectedItems.Count
-        Write-Status (T '5bey5Y+W5raI5riF55CG77yM5pyq5Yig6Zmk5Lu75L2V6aG555uu44CC') Yellow
     }
 }
 
