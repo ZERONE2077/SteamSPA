@@ -2,13 +2,7 @@
 
 SteamSPA 是一个用于识别和清理 Steam 假入库 / 解锁脚本残留的 PowerShell 单文件工具。
 
-对外只维护和分发一个文件：
-
-```text
-uninstall.ps1
-```
-
-清理规则已经内置在 `uninstall.ps1` 里面，不需要额外的 `targets.json`。
+对外只维护和分发一个文件：`uninstall.ps1`。
 
 ## 使用前说明
 
@@ -36,18 +30,18 @@ irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninst
 irm https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 | iex
 ```
 
-如果 jsDelivr 有缓存，想强制刷新，可以在 URL 后面加随机参数：
+## 绕过缓存
 
-```powershell
-irm "https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?$(Get-Random)" | iex
-```
-
-## 绕过 GitHub Raw 缓存
-
-如果刚刚更新脚本，GitHub Raw 可能短时间返回旧缓存。可以临时这样测试：
+GitHub Raw：
 
 ```powershell
 irm "https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1?$(Get-Random)" | iex
+```
+
+jsDelivr：
+
+```powershell
+irm "https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?$(Get-Random)" | iex
 ```
 
 ## 本地运行
@@ -69,40 +63,22 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 - `-NoBackup`：清理前不备份文件。
 - `-NoPause`：结束后不等待按 Enter。
 
-如果需要给远程脚本传参数，使用下面这种写法：
+远程带参数示例：
 
 ```powershell
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1))) -Only steam-inject-dlls
 ```
 
-jsDelivr CDN 同样可以这样传参数：
-
-```powershell
-& ([scriptblock]::Create((irm https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1))) -Only steam-inject-dlls
-```
-
-普通用户不需要使用带参数写法。
-
 ## 维护方式
 
 以后新增假入库识别 / 清理项时，只维护 `uninstall.ps1`。
 
-建议流程：
-
-1. 把新的第三方脚本样本放进 `scripts/` 对应目录，作为分析留档。
-2. 总结它新增了哪些文件、注册表、计划任务、Defender 排除项等。
-3. 把确认后的规则维护进 `uninstall.ps1` 的内置规则。
-4. 测试扫描和确认清理流程。
-5. 提交推送到 GitHub。
-
-## 目录说明
+公开仓库保持简洁，只保留：
 
 ```text
-SteamSPA/
-  uninstall.ps1     # 唯一对外分发和维护的清理脚本
-  README.md         # 使用说明
-  scripts/          # 第三方脚本样本留档，方便以后分析
-  docs/             # 分析记录 / 需求记录
-  dev/              # 自用分析工具
-  temp/             # 运行报告和备份，不入库
+.gitignore
+README.md
+uninstall.ps1
 ```
+
+本地分析资料、第三方脚本样本、开发辅助脚本不上传。
