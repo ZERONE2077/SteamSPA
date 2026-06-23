@@ -71,14 +71,16 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 ## 维护方式
 
-以后新增假入库识别 / 清理项时，只维护 `uninstall.ps1`。
+普通用户只需要使用 `uninstall.ps1`。
 
-公开仓库保持简洁，只保留：
+为了避免换电脑或本地文件丢失，仓库会保留维护资料：
 
 ```text
-.gitignore
-README.md
-uninstall.ps1
+README.md          # 使用说明
+uninstall.ps1      # 对外执行脚本
+docs/              # 维护笔记 / 归纳记录
+scripts/           # 第三方脚本样本留档
+dev/               # 自用分析工具
 ```
 
-本地分析资料、第三方脚本样本、开发辅助脚本不上传。
+以后新增假入库识别 / 清理项时，最终只需要更新 `uninstall.ps1`；`docs/`、`scripts/`、`dev/` 用于备份和辅助分析。
