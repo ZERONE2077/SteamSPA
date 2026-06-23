@@ -80,7 +80,6 @@ README.md          # 使用说明
 uninstall.ps1      # 对外执行脚本
 docs/              # 维护笔记 / 归纳记录
 scripts/           # 第三方脚本样本留档
-dev/               # 自用分析工具
 ```
 
-以后新增假入库识别 / 清理项时，最终只需要更新 `uninstall.ps1`；`docs/`、`scripts/`、`dev/` 用于备份和辅助分析。
+以后新增假入库识别 / 清理项时，最终只需要更新 `uninstall.ps1`；`docs/`、`scripts/` 用于备份和辅助分析。
