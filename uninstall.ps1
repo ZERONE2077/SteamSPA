@@ -1,5 +1,3 @@
-﻿#Requires -Version 5.1
-#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     SteamSPA clean engine.
@@ -47,6 +45,15 @@ for ($i = 0; $i -lt $args.Count; $i++) {
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
+
+if ($PSVersionTable.PSVersion -lt [version]'5.1') {
+    throw 'SteamSPA uninstall.ps1 requires Windows PowerShell 5.1 or later.'
+}
+
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($Clean -and -not $isAdmin) {
+    throw '清理模式需要以管理员身份运行 PowerShell。请右键 PowerShell，选择“以管理员身份运行”，然后重新执行命令。'
+}
 
 $scriptRoot = $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($scriptRoot) -and -not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
