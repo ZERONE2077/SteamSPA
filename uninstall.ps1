@@ -46,7 +46,7 @@ if ($PSVersionTable.PSVersion -lt [version]'5.1') {
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if ($Clean -and -not $isAdmin) {
-    throw 'Clean mode requires Administrator PowerShell. Please run PowerShell as Administrator and retry.'
+    throw (T '5riF55CG5qih5byP6ZyA6KaB5Lul566h55CG5ZGY6Lqr5Lu96L+Q6KGMIFBvd2VyU2hlbGzjgILor7flj7PplK4gUG93ZXJTaGVsbO+8jOmAieaLqeKAnOS7peeuoeeQhuWRmOi6q+S7vei/kOihjOKAne+8jOeEtuWQjumHjeaWsOaJp+ihjOWRveS7pOOAgg==')
 }
 
 $scriptRoot = $PSScriptRoot
@@ -70,6 +70,11 @@ ew0KICAgICIkc2NoZW1hIjogICIuL3RhcmdldHMuc2NoZW1hLmpzb24iLA0KICAgICJ2ZXJzaW9uIjog
 function Write-Status {
     param([string]$Message, [ConsoleColor]$Color = 'Gray')
     Write-Host $Message -ForegroundColor $Color
+}
+
+function T {
+    param([string]$Base64)
+    return [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Base64))
 }
 
 function Resolve-Template {
@@ -223,7 +228,7 @@ function Remove-Action {
             return 'removed'
         }
         default {
-            throw "Unsupported action type: $($Action.type)"
+            throw ((T '5LiN5pSv5oyB55qE5Yqo5L2c57G75Z6LOiA=') + $Action.type)
         }
     }
 }
@@ -261,23 +266,23 @@ function Save-Report {
 
 Clear-Host
 Write-Status '========================================' Cyan
-Write-Status '  SteamSPA leftover scanner / cleaner' Cyan
+Write-Status (T 'ICBTdGVhbVNQQSDlgYflhaXlupPmrovnlZnmiavmj48gLyDmuIXnkIY=') Cyan
 Write-Status '========================================' Cyan
 Write-Host ''
 
 if ($Clean) {
-    Write-Status 'Mode: clean' Yellow
+    Write-Status (T '5b2T5YmN5qih5byPOiDmuIXnkIY=') Yellow
 }
 else {
-    Write-Status 'Mode: scan (no changes will be made)' Yellow
+    Write-Status (T '5b2T5YmN5qih5byPOiDmiavmj4/vvIjkuI3kvJrliKDpmaTku7vkvZXlhoXlrrnvvIk=') Yellow
 }
 
 $variables = Get-Variables
 if ($variables.SteamPath) {
-    Write-Status "Steam path: $($variables.SteamPath)" Green
+    Write-Status ((T 'U3RlYW0g55uu5b2VOiA=') + $variables.SteamPath) Green
 }
 else {
-    Write-Status 'Steam path was not detected.' Yellow
+    Write-Status (T '5pyq5qOA5rWL5YiwIFN0ZWFtIOebruW9leOAgg==') Yellow
 }
 
 $targets = Read-Targets
@@ -303,7 +308,7 @@ $rules = @($targets.rules) | Where-Object {
 }
 
 Write-Host ''
-Write-Status "Loaded rules: $($rules.Count)" Cyan
+Write-Status ((T '5Yqg6L296KeE5YiZOiA=') + $rules.Count + (T 'IOadoQ==')) Cyan
 Write-Host ''
 
 $detectedItems = @()
@@ -332,10 +337,10 @@ foreach ($rule in $rules) {
                 Action = $action
                 Label = $label
             }
-            Write-Status "  [FOUND] $label" Green
+            Write-Status ((T 'ICBb5Y+R546wXSA=') + $label) Green
         }
         else {
-            Write-Status "  [MISS] $label" DarkGray
+            Write-Status ((T 'ICBb5LiN5a2Y5ZyoXSA=') + $label) DarkGray
         }
 
         $ruleReport.actions += [ordered]@{
@@ -351,11 +356,11 @@ foreach ($rule in $rules) {
 
 if ($Clean) {
     Write-Status '========================================' Cyan
-    Write-Status '  Cleanup summary' Cyan
+    Write-Status (T 'ICDlvoXmuIXnkIbpobnnm67msYfmgLs=') Cyan
     Write-Status '========================================' Cyan
 
     if ($detectedItems.Count -eq 0) {
-        Write-Status 'No cleanup targets were detected.' Green
+        Write-Status (T '5pyq5Y+R546w6ZyA6KaB5riF55CG55qE6aG555uu44CC') Green
     }
     else {
         $index = 1
@@ -372,32 +377,32 @@ if ($Clean) {
         }
 
         Write-Host ''
-        Write-Status 'The items above are all detected leftovers.' Yellow
-        Write-Status 'Press Enter to remove these items, or type N then Enter to cancel.' Yellow
-        $answer = Read-Host 'Confirm'
+        Write-Status (T '5LiK6Z2i5piv5pys5qyh5qOA5rWL5Yiw55qE5YWo6YOo5q6L55WZ6aG544CC') Yellow
+        Write-Status (T '5oyJIEVudGVyIOehruiupOWIoOmZpOS7peS4iumhueebru+8m+i+k+WFpSBOIOWQjuWbnui9puWPlua2iOOAgg==') Yellow
+        $answer = Read-Host (T '56Gu6K6k')
 
         if ($answer -eq 'N' -or $answer -eq 'n') {
             $report.summary.skipped += $detectedItems.Count
-            Write-Status 'Cleanup canceled. Nothing was removed.' Yellow
+            Write-Status (T '5bey5Y+W5raI5riF55CG77yM5pyq5Yig6Zmk5Lu75L2V6aG555uu44CC') Yellow
         }
         else {
             Write-Host ''
-            Write-Status 'Cleaning...' Cyan
+            Write-Status (T '5byA5aeL5riF55CGLi4u') Cyan
             foreach ($item in $detectedItems) {
                 try {
                     $result = Remove-Action -Action $item.Action -Variables $variables -BackupRoot $backupRoot -NoBackup:$NoBackup
                     if ($result -eq 'removed') {
                         $report.summary.removed++
-                        Write-Status "  [REMOVED] $($item.Label)" Green
+                        Write-Status ((T 'ICBb5bey5Yig6ZmkXSA=') + $item.Label) Green
                     }
                     else {
                         $report.summary.skipped++
-                        Write-Status "  [SKIPPED] $($item.Label)" DarkGray
+                        Write-Status ((T 'ICBb6Lez6L+HXSA=') + $item.Label) DarkGray
                     }
                 }
                 catch {
                     $report.summary.failed++
-                    Write-Status "  [FAILED] $($item.Label) - $($_.Exception.Message)" Red
+                    Write-Status ((T 'ICBb5aSx6LSlXSA=') + $item.Label + ' - ' + $_.Exception.Message) Red
                 }
             }
         }
@@ -409,23 +414,23 @@ if ($Clean) {
 $reportPath = Save-Report -Report $report -Root $logRoot
 
 Write-Status '========================================' Cyan
-Write-Status '  Done' Cyan
+Write-Status (T 'ICDlrozmiJA=') Cyan
 Write-Status '========================================' Cyan
-Write-Status "Detected: $($report.summary.detected)" Gray
-Write-Status "Removed: $($report.summary.removed)" Gray
-Write-Status "Failed: $($report.summary.failed)" Gray
-Write-Status "Skipped: $($report.summary.skipped)" Gray
-Write-Status "Report: $reportPath" Gray
+Write-Status ((T '5Y+R546wOiA=') + $report.summary.detected) Gray
+Write-Status ((T '5Yig6ZmkOiA=') + $report.summary.removed) Gray
+Write-Status ((T '5aSx6LSlOiA=') + $report.summary.failed) Gray
+Write-Status ((T '6Lez6L+HOiA=') + $report.summary.skipped) Gray
+Write-Status ((T '5oql5ZGKOiA=') + $reportPath) Gray
 
 if ($Clean -and -not $NoBackup) {
-    Write-Status "Backup: $backupRoot" Gray
+    Write-Status ((T '5aSH5Lu9OiA=') + $backupRoot) Gray
 }
 
 Write-Host ''
-Write-Status 'Recommended: verify game files in Steam and restart Steam.' Yellow
+Write-Status (T '5bu66K6u5ZCO57ut5ZyoIFN0ZWFtIOS4remqjOivgea4uOaIj+aWh+S7tuWujOaVtOaAp++8jOW5tumHjeWQryBTdGVhbeOAgg==') Yellow
 
 if (-not $NoPause) {
-    Read-Host 'Press Enter to exit'
+    Read-Host (T '5oyJIEVudGVyIOmUrumAgOWHug==')
 }
 
 
