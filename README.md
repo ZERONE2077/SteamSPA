@@ -19,7 +19,7 @@ SteamSPA 是一个用于识别和清理 Steam 假入库 / 解锁脚本残留的 
 ## 推荐方式：GitHub Raw
 
 ```powershell
-irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1 | iex
+irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1 | iex
 ```
 
 ## CDN 方式：jsDelivr
@@ -35,7 +35,7 @@ irm https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 | iex
 GitHub Raw：
 
 ```powershell
-irm "https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1?$(Get-Random)" | iex
+irm "https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1?$(Get-Random)" | iex
 ```
 
 jsDelivr：
@@ -66,7 +66,7 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 远程带参数示例：
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1))) -Only steam-inject-dlls
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1))) -Only steam-inject-dlls
 ```
 
 ## 维护方式
