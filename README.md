@@ -10,15 +10,9 @@ uninstall.ps1
 
 清理规则已经内置在 `uninstall.ps1` 里面，不需要额外的 `targets.json`。
 
-## 一键使用
+## 使用前说明
 
-普通用户只需要执行这一条命令：
-
-```powershell
-irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1 | iex
-```
-
-脚本流程：
+脚本不是直接删除，而是：
 
 1. 先扫描残留，不会立即删除任何内容。
 2. 显示检测到的文件、注册表、进程等项目。
@@ -26,15 +20,45 @@ irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninst
 4. 只有输入 `Y` 并回车后，才会开始清理。
 5. 其他输入都会取消清理。
 
-清理系统目录、Program Files、HKLM 注册表等项目时，需要使用管理员 PowerShell。
+建议使用“管理员 PowerShell”运行，因为清理 `Program Files`、`HKLM` 注册表、Defender 排除项等内容时需要管理员权限。
 
-## 绕过 GitHub raw 缓存
+## 推荐方式：GitHub Raw
 
-如果刚刚更新脚本，GitHub raw 可能短时间返回旧缓存。可以临时这样测试：
+```powershell
+irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1 | iex
+```
+
+## CDN 方式：jsDelivr
+
+如果 GitHub Raw 访问慢，可以尝试 jsDelivr CDN：
+
+```powershell
+irm https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 | iex
+```
+
+如果 jsDelivr 有缓存，想强制刷新，可以在 URL 后面加随机参数：
+
+```powershell
+irm "https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?$(Get-Random)" | iex
+```
+
+## 绕过 GitHub Raw 缓存
+
+如果刚刚更新脚本，GitHub Raw 可能短时间返回旧缓存。可以临时这样测试：
 
 ```powershell
 irm "https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1?$(Get-Random)" | iex
 ```
+
+## 本地运行
+
+如果你已经下载了 `uninstall.ps1`，也可以本地运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
+```
+
+本地运行同样是先扫描，再询问是否清理。
 
 ## 可选参数
 
@@ -44,6 +68,20 @@ irm "https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/unins
 - `-Only <规则ID>`：只处理指定规则 ID。
 - `-NoBackup`：清理前不备份文件。
 - `-NoPause`：结束后不等待按 Enter。
+
+如果需要给远程脚本传参数，使用下面这种写法：
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/refs/heads/main/uninstall.ps1))) -Only steam-inject-dlls
+```
+
+jsDelivr CDN 同样可以这样传参数：
+
+```powershell
+& ([scriptblock]::Create((irm https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1))) -Only steam-inject-dlls
+```
+
+普通用户不需要使用带参数写法。
 
 ## 维护方式
 
