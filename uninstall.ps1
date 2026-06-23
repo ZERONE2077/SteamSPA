@@ -2,14 +2,12 @@
 .SYNOPSIS
     SteamSPA clean engine.
 .DESCRIPTION
-    Uses embedded targets and performs scan or cleanup for leftover traces.
-    Default mode is scan. Add -Clean to remove detected targets.
+    Scans SteamSPA leftovers first, then asks for confirmation before cleanup.
 #>
 # NOTE:
 # This script intentionally avoids a script-level param() block so it can be
 # executed by `irm <raw-url> | iex` reliably. Arguments are parsed from $args
 # for normal `-File` usage.
-$Clean = $false
 $NoBackup = $false
 $NoPause = $false
 $Only = @()
@@ -17,7 +15,6 @@ $Risk = @('low', 'medium')
 
 for ($i = 0; $i -lt $args.Count; $i++) {
     switch -Regex ($args[$i]) {
-        '^-Clean$' { $Clean = $true; continue }
         '^-NoBackup$' { $NoBackup = $true; continue }
         '^-NoPause$' { $NoPause = $true; continue }
         '^-Only$' {
@@ -44,10 +41,6 @@ if ($PSVersionTable.PSVersion -lt [version]'5.1') {
     throw 'SteamSPA uninstall.ps1 requires Windows PowerShell 5.1 or later.'
 }
 
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if ($Clean -and -not $isAdmin) {
-    throw (T '5riF55CG5qih5byP6ZyA6KaB5Lul566h55CG5ZGY6Lqr5Lu96L+Q6KGMIFBvd2VyU2hlbGzjgILor7flj7PplK4gUG93ZXJTaGVsbO+8jOmAieaLqeKAnOS7peeuoeeQhuWRmOi6q+S7vei/kOihjOKAne+8jOeEtuWQjumHjeaWsOaJp+ihjOWRveS7pOOAgg==')
-}
 
 $scriptRoot = $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($scriptRoot) -and -not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
@@ -270,12 +263,7 @@ Write-Status (T 'ICBTdGVhbVNQQSDlgYflhaXlupPmrovnlZnmiavmj48gLyDmuIXnkIY=') Cyan
 Write-Status '========================================' Cyan
 Write-Host ''
 
-if ($Clean) {
-    Write-Status (T '5b2T5YmN5qih5byPOiDmuIXnkIY=') Yellow
-}
-else {
-    Write-Status (T '5b2T5YmN5qih5byPOiDmiavmj4/vvIjkuI3kvJrliKDpmaTku7vkvZXlhoXlrrnvvIk=') Yellow
-}
+Write-Status (T '5b2T5YmN5qih5byPOiDlhYjmiavmj4/vvIznoa7orqTlkI7muIXnkIY=') Yellow
 
 $variables = Get-Variables
 if ($variables.SteamPath) {
@@ -291,7 +279,7 @@ $logRoot = Join-Path $scriptRoot 'temp\logs'
 
 $report = [ordered]@{
     startedAt = (Get-Date).ToString('o')
-    mode      = if ($Clean) { 'clean' } else { 'scan' }
+    mode      = 'scan-confirm-clean'
     targets   = @()
     summary   = [ordered]@{
         detected = 0
@@ -354,63 +342,65 @@ foreach ($rule in $rules) {
     Write-Host ''
 }
 
-if ($Clean) {
-    Write-Status '========================================' Cyan
-    Write-Status (T 'ICDlvoXmuIXnkIbpobnnm67msYfmgLs=') Cyan
-    Write-Status '========================================' Cyan
+Write-Status '========================================' Cyan
+Write-Status (T 'ICDlvoXmuIXnkIbpobnnm67msYfmgLs=') Cyan
+Write-Status '========================================' Cyan
 
-    if ($detectedItems.Count -eq 0) {
-        Write-Status (T '5pyq5Y+R546w6ZyA6KaB5riF55CG55qE6aG555uu44CC') Green
-    }
-    else {
-        $index = 1
-        foreach ($item in $detectedItems) {
-            $riskColor = switch ($item.Risk) {
-                'high' { 'Red' }
-                'medium' { 'Yellow' }
-                default { 'Gray' }
-            }
-            Write-Host ("[{0}] " -f $index) -NoNewline -ForegroundColor Cyan
-            Write-Host ("{0} / {1} / {2}" -f $item.RuleId, $item.Action.type, $item.Risk) -ForegroundColor $riskColor
-            Write-Status ("    {0}" -f $item.Label) Gray
-            $index++
+if ($detectedItems.Count -eq 0) {
+    Write-Status (T '5pyq5Y+R546w6ZyA6KaB5riF55CG55qE6aG555uu44CC') Green
+}
+else {
+    $index = 1
+    foreach ($item in $detectedItems) {
+        $riskColor = switch ($item.Risk) {
+            'high' { 'Red' }
+            'medium' { 'Yellow' }
+            default { 'Gray' }
         }
-
-        Write-Host ''
-        Write-Status (T '5LiK6Z2i5piv5pys5qyh5qOA5rWL5Yiw55qE5YWo6YOo5q6L55WZ6aG544CC') Yellow
-        Write-Status (T '5oyJIEVudGVyIOehruiupOWIoOmZpOS7peS4iumhueebru+8m+i+k+WFpSBOIOWQjuWbnui9puWPlua2iOOAgg==') Yellow
-        $answer = Read-Host (T '56Gu6K6k')
-
-        if ($answer -eq 'N' -or $answer -eq 'n') {
-            $report.summary.skipped += $detectedItems.Count
-            Write-Status (T '5bey5Y+W5raI5riF55CG77yM5pyq5Yig6Zmk5Lu75L2V6aG555uu44CC') Yellow
-        }
-        else {
-            Write-Host ''
-            Write-Status (T '5byA5aeL5riF55CGLi4u') Cyan
-            foreach ($item in $detectedItems) {
-                try {
-                    $result = Remove-Action -Action $item.Action -Variables $variables -BackupRoot $backupRoot -NoBackup:$NoBackup
-                    if ($result -eq 'removed') {
-                        $report.summary.removed++
-                        Write-Status ((T 'ICBb5bey5Yig6ZmkXSA=') + $item.Label) Green
-                    }
-                    else {
-                        $report.summary.skipped++
-                        Write-Status ((T 'ICBb6Lez6L+HXSA=') + $item.Label) DarkGray
-                    }
-                }
-                catch {
-                    $report.summary.failed++
-                    Write-Status ((T 'ICBb5aSx6LSlXSA=') + $item.Label + ' - ' + $_.Exception.Message) Red
-                }
-            }
-        }
+        Write-Host ("[{0}] " -f $index) -NoNewline -ForegroundColor Cyan
+        Write-Host ("{0} / {1} / {2}" -f $item.RuleId, $item.Action.type, $item.Risk) -ForegroundColor $riskColor
+        Write-Status ("    {0}" -f $item.Label) Gray
+        $index++
     }
 
     Write-Host ''
+    Write-Status (T '5LiK6Z2i5piv5pys5qyh5qOA5rWL5Yiw55qE5YWo6YOo5q6L55WZ6aG544CC') Yellow
+    Write-Status (T '6L6T5YWlIFkg5ZCO5Zue6L2m5byA5aeL5riF55CG77yb5YW25LuW6L6T5YWl55u05o6l6YCA5Ye677yM5LiN5Lya5Yig6Zmk5Lu75L2V5YaF5a6544CC') Yellow
+    $answer = Read-Host (T '5piv5ZCm5riF55CG')
+
+    if ($answer -eq 'Y' -or $answer -eq 'y') {
+        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        if (-not $isAdmin) {
+            throw (T '5riF55CG6ZyA6KaB5Lul566h55CG5ZGY6Lqr5Lu96L+Q6KGMIFBvd2VyU2hlbGzjgILor7flj7PplK4gUG93ZXJTaGVsbO+8jOmAieaLqeKAnOS7peeuoeeQhuWRmOi6q+S7vei/kOihjOKAne+8jOeEtuWQjumHjeaWsOaJp+ihjOWRveS7pOOAgg==')
+        }
+
+        Write-Host ''
+        Write-Status (T '5byA5aeL5riF55CGLi4u') Cyan
+        foreach ($item in $detectedItems) {
+            try {
+                $result = Remove-Action -Action $item.Action -Variables $variables -BackupRoot $backupRoot -NoBackup:$NoBackup
+                if ($result -eq 'removed') {
+                    $report.summary.removed++
+                    Write-Status ((T 'ICBb5bey5Yig6ZmkXSA=') + $item.Label) Green
+                }
+                else {
+                    $report.summary.skipped++
+                    Write-Status ((T 'ICBb6Lez6L+HXSA=') + $item.Label) DarkGray
+                }
+            }
+            catch {
+                $report.summary.failed++
+                Write-Status ((T 'ICBb5aSx6LSlXSA=') + $item.Label + ' - ' + $_.Exception.Message) Red
+            }
+        }
+    }
+    else {
+        $report.summary.skipped += $detectedItems.Count
+        Write-Status (T '5bey5Y+W5raI5riF55CG77yM5pyq5Yig6Zmk5Lu75L2V6aG555uu44CC') Yellow
+    }
 }
 
+Write-Host ''
 $reportPath = Save-Report -Report $report -Root $logRoot
 
 Write-Status '========================================' Cyan
@@ -422,7 +412,7 @@ Write-Status ((T '5aSx6LSlOiA=') + $report.summary.failed) Gray
 Write-Status ((T '6Lez6L+HOiA=') + $report.summary.skipped) Gray
 Write-Status ((T '5oql5ZGKOiA=') + $reportPath) Gray
 
-if ($Clean -and -not $NoBackup) {
+if ($report.summary.removed -gt 0 -and -not $NoBackup) {
     Write-Status ((T '5aSH5Lu9OiA=') + $backupRoot) Gray
 }
 
