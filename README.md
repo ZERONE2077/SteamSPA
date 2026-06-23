@@ -58,7 +58,7 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 一般用户不需要参数。
 
-- `-Risk low,medium,high`：选择扫描 / 清理的风险级别，默认 `low,medium`。
+- `-Risk low,medium,high`：选择扫描 / 清理的风险级别，默认 `low,medium,high`。
 - `-Only <规则ID>`：只处理指定规则 ID。
 - `-NoBackup`：清理前不备份文件。
 - `-NoPause`：结束后不等待按 Enter。
