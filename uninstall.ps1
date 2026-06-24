@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     SteamSPA clean engine.
 .DESCRIPTION
