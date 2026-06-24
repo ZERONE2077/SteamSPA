@@ -1,55 +1,39 @@
 ﻿$ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$templatePath = Join-Path $repoRoot 'LocalTest.lnk'
 $outPath = Join-Path $repoRoot 'SteamSPA-Remote.lnk'
 $url = 'https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1'
+$title = 'STEAM SPA Remote'
 
-if (-not (Test-Path -LiteralPath $templatePath)) {
-    throw "Template not found: $templatePath"
-}
+$cmdExe = Join-Path $env:WINDIR 'System32\cmd.exe'
+$powershellExe = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+
+# Encode the PowerShell payload so cmd.exe does not need to parse nested quotes.
+# Runtime cache-busting: every double-click appends a fresh GUID query string.
+$psCommand = '$ProgressPreference=''SilentlyContinue''; $u=''' + $url + '?'' + [guid]::NewGuid().ToString(''N''); iex (irm $u)'
+$encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($psCommand))
+
+# cmd.exe wrapper: set title, run PowerShell, then pause so errors do not flash away.
+$arguments = '/c "title ' + $title + ' & ""' + $powershellExe + '"" -NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + $encodedCommand + ' & echo. & pause"'
 
 $ws = New-Object -ComObject WScript.Shell
-$template = $ws.CreateShortcut($templatePath)
-$oldArgs = $template.Arguments
-
-# Keep this shorter than LocalTest.lnk arguments so we can replace it in-place.
-# In-place replacement preserves console shortcut ExtraData (font/colors/window) that
-# WScript.Shell can drop or rewrite when saving a shortcut.
-$newArgs = '-NoP -NoExit -EP Bypass -C "iex(irm(''' + $url + '?''+[guid]::NewGuid()))"'
-if ($newArgs.Length -gt $oldArgs.Length) {
-    throw "New arguments are longer than template arguments. Old=$($oldArgs.Length), New=$($newArgs.Length)"
-}
-
-Copy-Item -LiteralPath $templatePath -Destination $outPath -Force
-
-$bytes = [System.IO.File]::ReadAllBytes($outPath)
-$oldText = [System.Text.Encoding]::Unicode.GetBytes($oldArgs)
-$newText = [System.Text.Encoding]::Unicode.GetBytes($newArgs.PadRight($oldArgs.Length))
-
-$offset = -1
-for ($i = 0; $i -le $bytes.Length - $oldText.Length; $i++) {
-    $match = $true
-    for ($j = 0; $j -lt $oldText.Length; $j++) {
-        if ($bytes[$i + $j] -ne $oldText[$j]) { $match = $false; break }
-    }
-    if ($match) { $offset = $i; break }
-}
-if ($offset -lt 0) {
-    throw 'Could not find template arguments in LocalTest.lnk binary.'
-}
-
-[Array]::Copy($newText, 0, $bytes, $offset, $newText.Length)
+$link = $ws.CreateShortcut($outPath)
+$link.TargetPath = $cmdExe
+$link.Arguments = $arguments
+$link.WorkingDirectory = Split-Path -Parent $cmdExe
+$link.WindowStyle = 1
+$link.IconLocation = "$powershellExe,0"
+$link.Description = 'SteamSPA remote runner via cmd.exe wrapper: sets title, downloads latest script with cache-busting, runs it, then pauses.'
+$link.Save()
 
 # Set Run as administrator flag in the .lnk header.
+$bytes = [System.IO.File]::ReadAllBytes($outPath)
 if ($bytes.Length -gt 0x15) {
     $bytes[0x15] = $bytes[0x15] -bor 0x20
+    [System.IO.File]::WriteAllBytes($outPath, $bytes)
 }
 
-[System.IO.File]::WriteAllBytes($outPath, $bytes)
-
-$result = $ws.CreateShortcut($outPath)
 Write-Host "Created: $outPath"
-Write-Host "Arguments: $($result.Arguments)"
-Write-Host "ReplacedAt: 0x$($offset.ToString('X'))"
-
+Write-Host "Target: $cmdExe"
+Write-Host "Arguments: $arguments"
+Write-Host "PowerShell: $psCommand"
