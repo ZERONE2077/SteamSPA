@@ -5,6 +5,12 @@
     Scans SteamSPA leftovers first, then asks for confirmation before cleanup.
 #>
 # NOTE: Chinese UI text is kept as plain UTF-8 for easy editing. Save this file as UTF-8 without BOM.
+Clear-Host
+$host.UI.RawUI.WindowTitle = 'STEAM SPA 假入库清杀工具'
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+
 # NOTE:
 # This script intentionally avoids a script-level param() block so it can be
 # executed by `irm <raw-url> | iex` reliably. Arguments are parsed from $args
@@ -33,10 +39,6 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         }
     }
 }
-
-$OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$ErrorActionPreference = 'Stop'
 
 if ($PSVersionTable.PSVersion -lt [version]'5.1') {
     throw 'SteamSPA uninstall.ps1 requires Windows PowerShell 5.1 or later.'
@@ -102,11 +104,35 @@ $EmbeddedTargetsJson = @'
                                       },
                                       {
                                           "type":  "file",
+                                          "path":  "${SteamPath}\\xinput1_42.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\xinput1_43.dll"
+                                      },
+                                      {
+                                          "type":  "file",
                                           "path":  "${SteamPath}\\dwmapi.log"
                                       },
                                       {
                                           "type":  "file",
+                                          "path":  "${SteamPath}\\dwmapi1.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\dwmapi2.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\dwmapi3.dll"
+                                      },
+                                      {
+                                          "type":  "file",
                                           "path":  "${SteamPath}\\hid.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\hid.vdf"
                                       },
                                       {
                                           "type":  "file",
@@ -115,6 +141,14 @@ $EmbeddedTargetsJson = @'
                                       {
                                           "type":  "file",
                                           "path":  "${SteamPath}\\zlib1.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\zlib1.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\zlib1.txt"
                                       },
                                       {
                                           "type":  "file",
@@ -127,6 +161,14 @@ $EmbeddedTargetsJson = @'
                                       {
                                           "type":  "file",
                                           "path":  "${SteamPath}\\user32.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\User32.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\User32.vdf"
                                       },
                                       {
                                           "type":  "file",
@@ -171,6 +213,22 @@ $EmbeddedTargetsJson = @'
                                       {
                                           "type":  "file",
                                           "path":  "${SteamPath}\\appcache\\appdata.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\appcache\\appdata64.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\appdata.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\appdata64.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\appdata64.dll"
                                       },
                                       {
                                           "type":  "file",
@@ -249,7 +307,8 @@ $EmbeddedTargetsJson = @'
                                       "scripts/steam-run.com/steam-run.com.001.ps1",
                                       "scripts/steam-run.com/steam-run.com.002.ps1",
                                       "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1"
+                                      "scripts/steam-run.com/steam-run.com.004.ps1",
+                                      "https://gitee.com/mrsiyecao/powershell2"
                                   ],
                       "enabled":  true,
                       "risk":  "low",
@@ -590,6 +649,110 @@ $EmbeddedTargetsJson = @'
                                       {
                                           "type":  "file",
                                           "path":  "${SteamPath}\\steam-lucky.exe"
+                                      }
+                                  ]
+                  },
+                  {
+                      "id":  "fake-library-team-steam-root-artifacts",
+                      "title":  "假入库团队 powershell2 根目录残留 (需确认)",
+                      "sources":  [
+                                      "https://gitee.com/mrsiyecao/powershell2"
+                                  ],
+                      "enabled":  true,
+                      "risk":  "high",
+                      "confirm":  true,
+                      "actions":  [
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit64"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit64274"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit.zip"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit64.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit197.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit200.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit203.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit206.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit214.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit215.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\legit218.vdf"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\2358721_143266280896848005.manifest"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\2358721_2985710911012900154.manifest"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\ANNO117.zip"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\ANNO117 - 副本.zip"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\anno1800.zip"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\ERN.zip"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\REPO.zip"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\ROTSP.zip"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\Grounded2"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\winhttp-log.txt"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\winhttp-log1.txt"
                                       }
                                   ]
                   },
@@ -1274,6 +1437,7 @@ function Save-DesktopTextReport {
 }
 
 Clear-Host
+$host.UI.RawUI.WindowTitle = 'STEAM SPA - 假入库清杀工具'
 Write-Blank
 Write-GradientText '  ███████ ████████ ███████  █████  ███    ███     ███████ ██████   █████  '
 Write-GradientText '  ██         ██    ██      ██   ██ ████  ████     ██      ██   ██ ██   ██ '
@@ -1281,7 +1445,8 @@ Write-GradientText '  ███████    ██    █████   █�
 Write-GradientText '       ██    ██    ██      ██   ██ ██  ██  ██          ██ ██      ██   ██ '
 Write-GradientText '  ███████    ██    ███████ ██   ██ ██      ██     ███████ ██      ██   ██ '
 Write-Blank
-Write-Status '  假入库清理/专杀工具 · 秒杀各种:注入DLL/STEAM 配置/注册表/启动项服务任务/安全排除策略/后台进程等' Muted
+Write-Status '  假入库清理/专杀工具：秒杀各种注入DLL/STEAM配置/注册表/启动项/系统服务/安全策略/后台进程等' Muted
+Write-Status '  作者：万能小哥' Muted
 
 $variables = Get-Variables
 $targets = Read-Targets
