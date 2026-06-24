@@ -10,7 +10,11 @@ $powershellExe = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershe
 
 # Windows Terminal is usually exposed as an App Execution Alias (wt.exe).
 # Launch it through cmd.exe /c start so the alias resolves like Win+R does.
-$psCommand = '$ProgressPreference=''SilentlyContinue''; $u=''' + $url + '?'' + [guid]::NewGuid().ToString(''N''); iex (irm $u)'
+$psCommand = "try{iex(irm('${url}?'+(Get-Random)))}catch{`$_;pause}"
+#
+# Use -EncodedCommand so Windows Terminal will not treat PowerShell semicolons
+# as WT command separators. Keep the encoded script short to avoid .lnk
+# argument truncation.
 $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($psCommand))
 $wtArguments = '-w 0 nt --title "' + $title + '" powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + $encodedCommand
 $arguments = '/c start "" wt.exe ' + $wtArguments
@@ -36,5 +40,6 @@ Write-Host "Created: $outPath"
 Write-Host "Target: $cmdExe"
 Write-Host "Arguments: $arguments"
 Write-Host "PowerShell: $psCommand"
+
 
 

@@ -326,13 +326,13 @@ $EmbeddedTargetsJson = @'
                   },
                   {
                       "id":  "localappdata-steam",
-                      "title":  "%LOCALAPPDATA%\\steam 目录 (需确认)",
+                      "title":  "%LOCALAPPDATA%\\Steam 客户端缓存目录 (默认禁用，避免登录/启动异常)",
                       "sources":  [
                                       "scripts/steam.run/cdks.run.001.ps1",
                                       "scripts/steam.run/steam.run.001.ps1",
                                       "scripts/steam.run/steam.run.002.ps1"
                                   ],
-                      "enabled":  true,
+                      "enabled":  false,
                       "risk":  "medium",
                       "confirm":  true,
                       "actions":  [
@@ -1774,6 +1774,7 @@ else {
     Write-Status '    2. 清理后可能需要重新登录 STEAM !' WarningSoft
     Write-Status '    3. 请确保还记得账户名称、邮箱、密码、手机令牌!' WarningSoft
     Write-Status '    4. 如清理失败，请退出杀毒软件后重试!' WarningSoft
+    Write-Status '    5. 清理后首次打开 STEAM 可能较慢，建议提前开启加速器，等待几分钟或重启后通常会恢复!' WarningSoft
 
     $confirmed = Read-CleanupConfirmation
 

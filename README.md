@@ -15,6 +15,7 @@ SteamSPA 是一个用于识别和清理 Steam 假入库 / 解锁脚本残留的 
 5. 其他输入都会取消清理。
 
 建议使用“管理员 PowerShell”运行，因为清理 `Program Files`、`HKLM` 注册表、Defender 排除项等内容时需要管理员权限。
+> 注意：清理后 Steam 第一次打开可能会比较慢，因为客户端需要重新生成/拉取部分 appcache、包信息和库元数据；如果网络环境一般，建议提前开启 Steam 加速器，等待几分钟或重启 Steam 后通常会恢复正常。
 
 ## 推荐方式：GitHub Raw
 
