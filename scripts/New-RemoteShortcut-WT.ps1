@@ -2,7 +2,10 @@
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $outPath = Join-Path $repoRoot 'SteamSPA-Remote-WT.lnk'
-$url = 'https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1'
+$urls = @(
+    'https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1',
+    'https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1'
+)
 $title = 'STEAM SPA - 假入库清杀工具'
 
 $cmdExe = Join-Path $env:WINDIR 'System32\cmd.exe'
@@ -10,7 +13,8 @@ $powershellExe = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershe
 
 # Windows Terminal is usually exposed as an App Execution Alias (wt.exe).
 # Launch it through cmd.exe /c start so the alias resolves like Win+R does.
-$psCommand = "try{iex(irm('${url}?'+(Get-Random)))}catch{`$_;pause}"
+$urlList = "@('" + ($urls -join "','") + "')"
+$psCommand = "[Net.ServicePointManager]::SecurityProtocol=3072;`$ok=0;foreach(`$u in $urlList){try{iex(irm(`$u+'?'+(Get-Random)));`$ok=1;break}catch{`$e=`$_}};if(!`$ok){`$e;pause}"
 #
 # Use -EncodedCommand so Windows Terminal will not treat PowerShell semicolons
 # as WT command separators. Keep the encoded script short to avoid .lnk
