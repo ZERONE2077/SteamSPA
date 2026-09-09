@@ -185,6 +185,89 @@ $EmbeddedTargetsJson = @'
                                       {
                                           "type":  "file",
                                           "path":  "${SteamPath}\\steam_api.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\Sdll.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\video.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\CefResource\\locales\\ff\\core.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\CefResource\\locales\\ff\\dwmapi.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\CefResource\\locales\\ff\\hid.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\CefResource\\locales\\ff\\xinput1_4.dll"
+                                      }
+                                  ]
+                  },
+                  {
+                      "id":  "sample-47-100-121-251",
+                      "title":  "Sample 47.100.121.251 leftovers (confirm)",
+                      "sources":  [
+                                      "scripts/47.100.121.251.ps1"
+                                  ],
+                      "enabled":  true,
+                      "risk":  "high",
+                      "confirm":  true,
+                      "actions":  [
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\core.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\7z.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\versions.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\cons"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "C:\\tmp\\AppData\\LocalLow\\Unialls\\Temp\\Download",
+                                          "recurse":  true
+                                      },
+                                      {
+                                          "type":  "registry-value",
+                                          "path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+                                          "name":  "DisableRegistryTools"
+                                      },
+                                      {
+                                          "type":  "registry-value",
+                                          "path":  "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+                                          "name":  "DisableRegistryTools"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-path",
+                                          "path":  "${SteamPath}\\core.dll"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-path",
+                                          "path":  "${SteamPath}\\versions.dll"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-path",
+                                          "path":  "${SteamPath}\\cons"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-path",
+                                          "path":  "C:\\tmp\\AppData\\LocalLow\\Unialls\\Temp\\Download"
                                       }
                                   ]
                   },
