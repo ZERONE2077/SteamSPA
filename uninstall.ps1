@@ -214,9 +214,12 @@ $EmbeddedTargetsJson = @'
                   },
                   {
                       "id":  "sample-47-100-121-251",
-                      "title":  "Sample 47.100.121.251 leftovers (confirm)",
+                      "title":  "Unialls 假入库家族残留 (需确认)",
                       "sources":  [
-                                      "scripts/47.100.121.251.ps1"
+                                      "scripts/47.100.121.251.ps1",
+                                      "scripts/47.98.148.132.ps1",
+                                      "scripts/vfc88.cn/vfc88.cn.001.ps1",
+                                      "scripts/vfc88.cn/ss.vfc77.cn.001.ps1"
                                   ],
                       "enabled":  true,
                       "risk":  "high",
@@ -240,7 +243,7 @@ $EmbeddedTargetsJson = @'
                                       },
                                       {
                                           "type":  "file",
-                                          "path":  "C:\\tmp\\AppData\\LocalLow\\Unialls\\Temp\\Download",
+                                          "path":  "C:\\tmp\\AppData\\LocalLow\\Unialls",
                                           "recurse":  true
                                       },
                                       {
@@ -267,7 +270,11 @@ $EmbeddedTargetsJson = @'
                                       },
                                       {
                                           "type":  "defender-exclusion-path",
-                                          "path":  "C:\\tmp\\AppData\\LocalLow\\Unialls\\Temp\\Download"
+                                          "path":  "C:\\tmp\\AppData\\LocalLow\\Unialls"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-path",
+                                          "path":  "C:\\Windows\\Temp"
                                       }
                                   ]
                   },
@@ -1638,6 +1645,9 @@ function Get-FakeLibraryHistoryClues {
         'cdk.ruku.run',
         'ruku.run',
         'steamcdkey.cn',
+        'vfc88.cn',
+        'vfc77.cn',
+        '121.41.99.14',
         'siyecao',
         'tfdl.net',
         'steamcdk',
