@@ -25,15 +25,19 @@ irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1 | i
 
 ## CDN 方式：jsDelivr
 
-如果 GitHub Raw 访问慢，可以尝试 jsDelivr CDN：
+如果 GitHub Raw 访问慢，可以尝试 jsDelivr CDN。
+
+> ⚠️ jsDelivr 返回的 `Content-Type` 是 `application/octet-stream`，Windows PowerShell 5.1 的 `irm` 对不带 charset 的响应按 ISO-8859-1 解码，会让脚本里的中文全部乱码（清理逻辑本身能跑完，但界面和 TXT 报告都成了 `æ«æ...` 这种）。所以 jsDelivr 必须显式按 UTF-8 解码：
 
 ```powershell
-irm https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 | iex
+iex ([Text.Encoding]::UTF8.GetString((iwr 'https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1' -UseBasicParsing).RawContentStream.ToArray()))
 ```
+
+国内可用的 jsDelivr 镜像（写法相同，只换域名）：`jsd.onmicrosoft.cn`、`cdn.jsdmirror.com`。
 
 ## 绕过缓存
 
-GitHub Raw：
+GitHub Raw（返回 `text/plain; charset=utf-8`，`irm` 可以直接用）：
 
 ```powershell
 irm "https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1?$(Get-Random)" | iex
@@ -42,7 +46,8 @@ irm "https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1?$(
 jsDelivr：
 
 ```powershell
-irm "https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?$(Get-Random)" | iex
+$u = "https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?$(Get-Random)"
+iex ([Text.Encoding]::UTF8.GetString((iwr $u -UseBasicParsing).RawContentStream.ToArray()))
 ```
 
 ## 本地运行
@@ -70,17 +75,15 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1))) -Only steam-inject-dlls
 ```
 
-## 维护方式
-
-普通用户只需要使用 `uninstall.ps1`。
-
-为了避免换电脑或本地文件丢失，仓库会保留维护资料：
+## 仓库结构
 
 ```text
-README.md          # 使用说明
-uninstall.ps1      # 对外执行脚本
-docs/              # 维护笔记 / 归纳记录
-scripts/           # 第三方脚本样本留档
+uninstall.ps1      # 唯一对外产物：扫描 + 清理脚本
+*.lnk              # 启动/分发用的快捷方式（本地、GitHub Raw、jsDelivr 三组）
+docs/              # 说明文档：维护笔记 / LNK 使用指南 / UI 文案 / 商品信息 / 实机报告样例
+data/              # 数据表格：痕迹总表（唯一数据源，md 人读 + csv 喂 AI / Excel）
+scripts/           # 第三方假入库脚本样本，按来源域名分目录留档
+tools/             # 辅助分析脚本：样本扫描、写入点提取、md<->csv 转换
 ```
 
-以后新增假入库识别 / 清理项时，最终只需要更新 `uninstall.ps1`；`docs/`、`scripts/` 用于备份和辅助分析。
+规则变更流程：拿到新样本 → 放进 `scripts/<来源>/` → 用 `tools/` 里的脚本扫描写入点 → 更新 `data/痕迹总表` → 最后改 `uninstall.ps1` 的规则 JSON。

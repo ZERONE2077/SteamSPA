@@ -443,10 +443,10 @@ GitHub Raw：
 irm 'https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1' | iex
 ```
 
-jsDelivr：
+jsDelivr（`irm` 会乱码，必须按字节取回再按 UTF-8 解，见第 18 节）：
 
 ```powershell
-irm 'https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1' | iex
+iex ([Text.Encoding]::UTF8.GetString((iwr 'https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1' -UseBasicParsing).RawContentStream.ToArray()))
 ```
 
 Gitee Raw：
@@ -454,6 +454,18 @@ Gitee Raw：
 ```powershell
 irm 'https://gitee.com/SteamWorks/sas/raw/main/main.ps1' | iex
 ```
+
+国内可用的 jsDelivr 镜像（实测 2026-09-11）：
+
+| 地址 | 说明 |
+|---|---|
+| `https://jsd.onmicrosoft.cn/gh/ZERONE2077/SteamSPA@main/uninstall.ps1` | 国内 jsDelivr 镜像，最快 |
+| `https://cdn.jsdmirror.com/gh/ZERONE2077/SteamSPA@main/uninstall.ps1` | 国内 jsDelivr 镜像 |
+| `https://fastly.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1` | jsDelivr 官方 Fastly 节点 |
+| `https://gcore.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1` | jsDelivr 官方 Gcore 节点 |
+| `https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1` | jsDelivr 主站 |
+
+镜像列表与回退逻辑已固化进 `SteamSPA-Remote-JSD.lnk` / `SteamSPA-Remote-JSD-WT.lnk`，见第 17 节。
 
 短链接 / 短码：
 
@@ -538,13 +550,25 @@ $bytes[0x15] = $bytes[0x15] -bor 0x20
 ## 15. 当前仓库文件对应关系
 
 ```text
-uninstall.ps1                         # 远程执行的主脚本
-SteamSPA-Remote.lnk                   # 兼容版快捷方式
-SteamSPA-Remote-WT.lnk                # Windows Terminal 美观版快捷方式
-scripts/New-RemoteShortcut.ps1        # 生成兼容版
-scripts/New-RemoteShortcut-WT.ps1     # 生成 WT 版
-docs/LNK使用指南.md                   # 本文档
+uninstall.ps1                          # 远程执行的主脚本
+SteamSPA-Remote.lnk                    # 兼容版快捷方式（GitHub Raw）
+SteamSPA-Remote-WT.lnk                 # Windows Terminal 美观版（GitHub Raw）
+SteamSPA-Remote-JSD.lnk                # 兼容版，payload 换成 6 源回退 + 字节级 UTF-8 解码
+SteamSPA-Remote-JSD-WT.lnk             # WT 美观版，同上
+一键清杀假入库.lnk                      # 对外分发的 WT 版（本地文件，不入库）
+docs/LNK使用指南.md                    # 本文档
 ```
+
+`SteamSPA-Remote` 与 `SteamSPA-Remote-WT` 除启动方式外其余字段一致；两个 JSD 版本是它们的克隆，**只替换了 `ARGS` 段**（标题、图标、工作目录、`RunAs` 标志全部继承）：
+
+| 快捷方式 | 启动方式 | URL |
+|---|---|---|
+| `SteamSPA-Remote` | `cmd.exe /c "title … & powershell -EncodedCommand … & echo. & pause"` | `raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1` |
+| `SteamSPA-Remote-WT` | `cmd.exe /c start "" wt.exe -w 0 nt --title … powershell -EncodedCommand …` | 同上 |
+| `SteamSPA-Remote-JSD` | 同 `SteamSPA-Remote` | 6 源回退：jsd.onmicrosoft.cn → cdn.jsdmirror.com → fastly → gcore → cdn.jsdelivr → raw github |
+| `SteamSPA-Remote-JSD-WT` | 同 `SteamSPA-Remote-WT` | 同上 |
+
+> 注：`scripts/New-RemoteShortcut.ps1` / `scripts/New-RemoteShortcut-WT.ps1` 已删除，生成快捷方式的写法见第 13、14、17 节。
 
 ---
 
@@ -558,3 +582,108 @@ docs/LNK使用指南.md                   # 本文档
 6. 用户不知道有没有 WT：发兼容版。
 7. 用户有 WT 且在意字体：发 WT 版。
 8. 出问题让用户截图窗口内容，不要一闪而过。
+9. **jsDelivr 系来源必须按字节取回再按 UTF-8 解**，否则中文全乱码（第 18 节）。
+
+---
+
+## 17. 国内 CDN 版快捷方式（jsDelivr）
+
+给国内无代理用户用。与 13/14 节结构完全相同，**唯一区别是把 payload 里的 URL 换掉**：
+
+```powershell
+# GitHub Raw 版
+$ProgressPreference='SilentlyContinue'; $u='https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1?' + [guid]::NewGuid().ToString('N'); iex (irm $u)
+
+# jsDelivr 版（必须按字节取回再按 UTF-8 解，理由见第 18 节）
+$ProgressPreference='SilentlyContinue'
+$u='https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?' + [guid]::NewGuid().ToString('N')
+iex ([Text.Encoding]::UTF8.GetString((iwr $u -UseBasicParsing).RawContentStream.ToArray()).TrimStart([char]0xFEFF))
+```
+
+WT 版同理，只换取回方式：
+
+```powershell
+try{iex([Text.Encoding]::UTF8.GetString((iwr('https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?'+(Get-Random)) -UseBasicParsing).RawContentStream.ToArray()))}catch{$_;pause}
+```
+
+`SteamSPA-Remote-JSD.lnk` / `-JSD-WT.lnk` 里固化的 payload 比上面多一层**多源回退**：`$spaSources` 依次尝试 jsd.onmicrosoft.cn → cdn.jsdmirror.com → fastly → gcore → cdn.jsdelivr → raw github，成功即 `break`；变量统一加 `$spa` 前缀，避免污染 `iex` 作用域。想单源、失败就报错，把循环换成上面那三行即可。
+
+### 改法：克隆现有 `.lnk` + 原位替换 ARGS 段
+
+不要用 `WScript.Shell` COM 重建快捷方式——沙箱里 `New-Object -ComObject` 会被安全中心拦截；克隆法还能顺带保住 ExtraData（控制台字体/颜色）和 `RunAs` 标记。
+
+`COMMAND_LINE_ARGUMENTS`（`StringData` 段内）是 UTF-16LE 的：
+
+```text
+/c "title STEAM SPA - 假入库清杀工具 & ""<powershell.exe>"" -NoProfile -ExecutionPolicy Bypass -EncodedCommand <BASE64> & echo. & pause"
+```
+
+`<BASE64>` 解码后是 UTF-16LE 的 PowerShell 命令。步骤：
+
+1. 找到 `/c `（UTF-16LE）的起始位置，往前 2 字节就是该字段的 `CountCharacters`。
+2. `CountCharacters` 解码出的字符数 **不含**结尾 NUL，WScript 实际也不写 NUL——所以字段就是紧跟其后的 `count` 个字符。
+3. 解 Base64 → 替换 URL → 重新编码 → 回写，并同步改 `CountCharacters`。
+4. `StringData` 之前（头 / IDList / LinkInfo）和之后（ICON_LOCATION / ExtraData）**一个字都不用动**，后续内容整体平移。
+
+WT 版把 Arguments 换成（结尾多三行防闪退，见 14 节）：
+
+```text
+/c start "" wt.exe -w 0 nt --title "STEAM SPA - 假入库清杀工具" powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand <BASE64>
+```
+
+`RunAs` 标志在 `.lnk` 二进制第 `0x15` 字节的 bit `0x20`，克隆时自动继承，无需再设置。
+
+参考脚本：`temp/read_lnk.py`（按字节解析所有 `.lnk` 的参数与 Base64）、`temp/patch2.py`（克隆 + 换 URL）。
+
+关于缓存：URL 带 `[guid]::NewGuid()` 时每次都回源 jsDelivr，拿到的一定是最新版；去掉它才能吃到镜像缓存，但 `@main` 分支最长陈旧 12 小时。分发场景默认保留防缓存参数。
+
+---
+
+## 18. jsDelivr 的编码坑：`irm` 会把中文变成乱码
+
+**现象**：用 jsDelivr / 国内镜像跑脚本，界面和 TXT 报告里中文全变成 `æ«æ`、`âââ`、`ð¥¸` 这种，但扫描和清理本身跑得完（2026-09-11 有客户实机中招）。
+
+**原因**：编码是 UTF-8 的文件被按 ISO-8859-1（≈CP1252）解了一遍。UTF-8 的「扫」是 `E6 89 AB`，按 Latin-1 逐字节解出来就是 `æ‰«`——`æ`、`â`、`ð` 这族字符一出现就基本可以判定是 UTF-8→Latin-1。
+
+**触发条件**：`Invoke-RestMethod` / `Invoke-WebRequest` 在 **Windows PowerShell 5.1** 下，若响应头 `Content-Type` 不带 `charset`，默认按 ISO-8859-1 解码。实测各来源：
+
+| 来源 | Content-Type（实测 2026-09-11） | PS 5.1 `irm` | PS 7 `irm` |
+|---|---|---|---|
+| `cdn.jsdelivr.net` | `application/octet-stream` | ❌ 乱码（80637 字符 = 逐字节） | ✅ |
+| `fastly.jsdelivr.net` | `application/octet-stream` | ❌ 乱码 | ✅ |
+| `gcore.jsdelivr.net` | `application/octet-stream` | ❌ 乱码 | ✅ |
+| `jsd.onmicrosoft.cn` | `application/octet-stream` | ❌ 乱码 | ✅ |
+| `cdn.jsdmirror.com` | `application/octet-stream` | ❌ 乱码 | ✅ |
+| `raw.githubusercontent.com` | `text/plain; charset=utf-8` | ✅ 正常 | ✅ |
+
+PowerShell 7 默认 UTF-8，所以本地用 pwsh 测不出来——**必须用 `powershell.exe`（5.1）复测**。
+
+**正确写法**（5.1 / 7 都正常，实测）：
+
+```powershell
+$u = 'https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?' + [guid]::NewGuid().ToString('N')
+$r = Invoke-WebRequest -Uri $u -UseBasicParsing -TimeoutSec 30
+$t = [System.Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray()).TrimStart([char]0xFEFF)
+iex $t
+```
+
+同效的等价写法（各有代价）：
+
+| 写法 | 5.1 | 7 | 说明 |
+|---|---|---|---|
+| `iwr … -OutFile f` + `Get-Content f -Raw -Encoding UTF8` | ✅ | ✅ | 稳，但落盘 |
+| `(New-Object Net.WebClient).Encoding=[Text.Encoding]::UTF8` + `DownloadString` | ✅ | ✅ | 稳，但 WebClient 已过时 |
+| `New-Object System.Net.Http.HttpClient` | ❌ 找不到类型 | ✅ | 5.1 需先 Add-Type 加载程序集 |
+| `[Text.Encoding]::UTF8.GetString($r.Content)` | ❌ | ❌ | `$r.Content` 已是错误解码后的结果，救不回来 |
+
+`TrimStart([char]0xFEFF)` 是为了顺手吃掉 BOM——见第 5 节，`iex` 遇到 BOM 会报 `﻿<# 无法识别`。
+
+**功能影响（不只是显示）**：脚本里唯一带中文的“数据”是这条路径——
+
+```json
+"path":  "${SteamPath}\\ANNO117 - 副本.zip"
+```
+
+乱码后该字符串不再等于真实文件名，这条残留检测会失效（其余规则路径全是 ASCII，不受影响）。所以乱码不是纯显示问题，仍应修掉。
+
+**防呆**：payload 里加了 `$spaText.Contains('SteamSPA')` 的长度/内容校验，避免镜像返回 200 的 HTML 错误页被直接喂给 `iex`。

@@ -12,5 +12,6 @@ desktop.ini
 # Editor / local files
 .vscode/
 .idea/
+/.workbuddy/
 
 # Local analysis notes
