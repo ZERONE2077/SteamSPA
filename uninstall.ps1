@@ -216,8 +216,8 @@ $EmbeddedTargetsJson = @'
                       "id":  "sample-47-100-121-251",
                       "title":  "Unialls 假入库家族残留 (需确认)",
                       "sources":  [
-                                      "scripts/47.100.121.251.ps1",
-                                      "scripts/47.98.148.132.ps1",
+                                      "scripts/47.100.121.251/47.100.121.251.ps1",
+                                      "scripts/47.98.148.132/47.98.148.132.ps1",
                                       "scripts/vfc88.cn/vfc88.cn.001.ps1",
                                       "scripts/vfc88.cn/ss.vfc77.cn.001.ps1"
                                   ],
@@ -512,7 +512,8 @@ $EmbeddedTargetsJson = @'
                                       "scripts/steam.run/cdks.run.001.ps1",
                                       "scripts/steam.run/steam.run.001.ps1",
                                       "scripts/steam.run/steam.run.002.ps1",
-                                      "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+                                      "scripts/steam-run.com/steamcdkey.cn.001.ps1",
+                                      "scripts/steamcn.cc/steamcn.cc.001.ps1"
                                   ],
                       "enabled":  true,
                       "risk":  "high",
@@ -565,6 +566,26 @@ $EmbeddedTargetsJson = @'
                                       {
                                           "type":  "defender-exclusion-path",
                                           "path":  "${SteamPath}\\steamcdk.exe"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-path",
+                                          "path":  "${SteamPath}\\SDL3_voder.dll"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-path",
+                                          "path":  "${TEMP}\\sdl3_setup"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-extension",
+                                          "name":  "bin"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-process",
+                                          "name":  "Steam.exe"
+                                      },
+                                      {
+                                          "type":  "defender-exclusion-process",
+                                          "name":  "curl.exe"
                                       }
                                   ]
                   },
@@ -692,11 +713,11 @@ $EmbeddedTargetsJson = @'
                   },
                   {
                       "id":  "opensteamtool-lua-config",
-                      "title":  "OpenSteamTool Lua 配置目录 (需确认)",
+                      "title":  "OpenSteamTool Lua 配置目录 (需确认，默认禁用)",
                       "sources":  [
                                       "https://github.com/OpenSteam001/OpenSteamTool"
                                   ],
-                      "enabled":  true,
+                      "enabled":  false,
                       "risk":  "medium",
                       "confirm":  true,
                       "actions":  [
@@ -756,9 +777,12 @@ $EmbeddedTargetsJson = @'
                   },
                   {
                       "id":  "fake-library-team-steam-root-artifacts",
-                      "title":  "假入库团队 powershell2 根目录残留 (需确认)",
+                      "title":  "假入库团队 powershell2 根目录残留 (需确认；游戏素材包已排除)",
                       "sources":  [
-                                      "https://gitee.com/mrsiyecao/powershell2"
+                                      "https://gitee.com/mrsiyecao/powershell2",
+                                      "scripts/mrsiyecao-powershell2/2.ps1",
+                                      "scripts/mrsiyecao-powershell2/script1.ps1",
+                                      "scripts/mrsiyecao-powershell2/Online.ps1"
                                   ],
                       "enabled":  true,
                       "risk":  "high",
@@ -811,42 +835,6 @@ $EmbeddedTargetsJson = @'
                                       {
                                           "type":  "file",
                                           "path":  "${SteamPath}\\legit218.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\2358721_143266280896848005.manifest"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\2358721_2985710911012900154.manifest"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\ANNO117.zip"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\ANNO117 - 副本.zip"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\anno1800.zip"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\ERN.zip"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\REPO.zip"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\ROTSP.zip"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\Grounded2"
                                       },
                                       {
                                           "type":  "file",
@@ -929,6 +917,26 @@ $EmbeddedTargetsJson = @'
                                           "type":  "registry-value",
                                           "path":  "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
                                           "name":  "PauseUpdatesExpiryTime"
+                                      }
+                                  ]
+                  },
+                  {
+                      "id":  "sdl3-voder-family",
+                      "title":  "SDL3_voder 假入库家族残留 (steamcn.cc)",
+                      "sources":  [
+                                      "scripts/steamcn.cc/steamcn.cc.001.ps1"
+                                  ],
+                      "enabled":  true,
+                      "risk":  "low",
+                      "actions":  [
+                                      {
+                                          "type":  "file",
+                                          "path":  "${SteamPath}\\SDL3_voder.dll"
+                                      },
+                                      {
+                                          "type":  "file",
+                                          "path":  "${LOCALAPPDATA}\\SDL3\\cache",
+                                          "recurse":  true
                                       }
                                   ]
                   },
@@ -1382,6 +1390,10 @@ function Test-ActionExists {
             $pref = Get-MpPreference -ErrorAction SilentlyContinue
             return $pref -and ($pref.ExclusionExtension -contains $Action.name)
         }
+        'defender-exclusion-process' {
+            $pref = Get-MpPreference -ErrorAction SilentlyContinue
+            return $pref -and ($pref.ExclusionProcess -contains $Action.name)
+        }
         'process' {
             return $null -ne (Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($Action.name)) -ErrorAction SilentlyContinue)
         }
@@ -1462,6 +1474,10 @@ function Remove-Action {
             Remove-MpPreference -ExclusionExtension $Action.name
             return 'removed'
         }
+        'defender-exclusion-process' {
+            Remove-MpPreference -ExclusionProcess $Action.name
+            return 'removed'
+        }
         'process' {
             Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($Action.name)) -ErrorAction SilentlyContinue | Stop-Process -Force
             return 'removed'
@@ -1507,6 +1523,7 @@ function Format-ActionLabel {
             return "Defender ${kind}: $path"
         }
         'defender-exclusion-extension' { return "Defender Extension: $($Action.name)" }
+        'defender-exclusion-process' { return "Defender Process: $($Action.name)" }
         'process' { return "Process: $($Action.name)" }
         'service' { return "Service: $($Action.name)" }
         'task' { return "Task: $($Action.name)" }
@@ -1531,6 +1548,7 @@ function Get-ActionCategory {
         'registry-value' { return 'registry' }
         'defender-exclusion-path' { return 'security' }
         'defender-exclusion-extension' { return 'security' }
+        'defender-exclusion-process' { return 'security' }
         'process' { return 'process' }
         'service' { return 'startup' }
         'task' { return 'startup' }
@@ -1645,6 +1663,10 @@ function Get-FakeLibraryHistoryClues {
         'cdk.ruku.run',
         'ruku.run',
         'steamcdkey.cn',
+        'steamcn.cc',
+        'SDL3_voder',
+        'sdl3_setup',
+        'csu_install',
         'vfc88.cn',
         'vfc77.cn',
         '121.41.99.14',
