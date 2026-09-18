@@ -1,5 +1,5 @@
 Clear-Host
-$host.UI.RawUI.WindowTitle = 'STEAM SPA - 假入库清杀工具'
+$host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具'
 Write-Blank
 Write-GradientText '  ███████ ████████ ███████  █████  ███    ███     ███████ ██████   █████  '
 Write-GradientText '  ██         ██    ██      ██   ██ ████  ████     ██      ██   ██ ██   ██ '
