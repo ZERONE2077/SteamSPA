@@ -216,11 +216,8 @@ if ($report.summary.removed -gt 0 -and -not $NoBackup) {
 Write-Blank
 if (-not $NoPause) {
     Write-Blank
-    Write-Status '  按任意键退出...' Muted -NoNewline
+    Write-Status '  按回车退出...' Muted -NoNewline
     if (-not [Console]::IsInputRedirected) {
-        [Console]::ReadKey($true) | Out-Null
-    }
-    else {
-        Write-Host ''
+        Read-Host | Out-Null
     }
 }
