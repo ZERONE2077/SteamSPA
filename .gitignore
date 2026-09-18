@@ -1,0 +1,17 @@
+# Runtime output
+/temp/
+.temp/
+*.log
+*.tmp
+*.bak
+
+# Windows metadata
+Thumbs.db
+desktop.ini
+
+# Editor / local files
+.vscode/
+.idea/
+/.workbuddy/
+
+# Local analysis notes
