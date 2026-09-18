@@ -1,11 +1,11 @@
 name: SteamSPA validation
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      check:
+        description: Run source and generated-artifact validation
+        required: false
+        default: true
 jobs:
   validate:
     runs-on: windows-latest
