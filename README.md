@@ -56,7 +56,7 @@ uninstall.ps1  ← 唯一对外分发产物
 - Defender 模块不存在时安全跳过相关动作。
 - DNS、代理等可能是用户主动配置的设置默认只报告。
 - PowerShell 历史记录只作为线索，不单独作为删除依据。
-- 默认创建清理备份。
+- 默认创建清理备份，不在桌面生成报告。
 
 ## 目录
 
@@ -66,6 +66,7 @@ data/rules.json
 src/
 tools/
 tests/
-research/```
+research/
+```
 
 Windows PowerShell 5.1+，无需第三方 PowerShell 模块。
