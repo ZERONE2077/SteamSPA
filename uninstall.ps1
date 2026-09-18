@@ -1340,6 +1340,95 @@ function Read-Targets {
     return $EmbeddedTargetsJson | ConvertFrom-Json
 }
 
+function Get-DefenderPreference {
+    # Defender 模块在精简版 / Server / 第三方杀软接管时不存在。
+    # 命令缺失抛的是 CommandNotFoundException（终止性错误，-ErrorAction 压不住），必须先用 Get-Command 探测。
+    if ($script:DefenderPreferenceProbed) {
+        return $script:DefenderPreferenceCache
+    }
+
+    $script:DefenderPreferenceProbed = $true
+    $script:DefenderPreferenceCache = $null
+
+    if (-not (Get-Command -Name Get-MpPreference -ErrorAction SilentlyContinue)) {
+        return $null
+    }
+
+    try {
+        $script:DefenderPreferenceCache = Get-MpPreference -ErrorAction Stop
+    }
+    catch {
+        $script:DefenderPreferenceCache = $null
+    }
+
+    return $script:DefenderPreferenceCache
+}
+
+function Remove-DefenderExclusion {
+    param(
+        [ValidateSet('path', 'extension', 'process')][string]$Kind,
+        [string]$Value
+    )
+
+    if (-not (Get-Command -Name Remove-MpPreference -ErrorAction SilentlyContinue)) {
+        return $false
+    }
+
+    try {
+        switch ($Kind) {
+            'path' { Remove-MpPreference -ExclusionPath $Value -ErrorAction Stop }
+            'extension' { Remove-MpPreference -ExclusionExtension $Value -ErrorAction Stop }
+            'process' { Remove-MpPreference -ExclusionProcess $Value -ErrorAction Stop }
+        }
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-ValveSignedFile {
+    # 官方文件保护：Steam 根目录里的 video.dll / SDL3.dll 等是 Valve 签名的客户端组件，
+    # 规则里同名 DLL 只应命中未签名的注入副本。签名有效且签发者为 Valve 时一律不删。
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+
+    $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
+    if (@('.dll', '.exe', '.sys', '.ocx', '.drv') -notcontains $ext) { return $false }
+
+    if (-not $script:ValveSignCache) { $script:ValveSignCache = @{} }
+    $key = $Path.ToLowerInvariant()
+    if ($script:ValveSignCache.ContainsKey($key)) { return $script:ValveSignCache[$key] }
+
+    $result = $false
+    if (Get-Command -Name Get-AuthenticodeSignature -ErrorAction SilentlyContinue) {
+        try {
+            $sig = Get-AuthenticodeSignature -LiteralPath $Path -ErrorAction Stop
+            if ($sig.Status -eq 'Valid' -and $sig.SignerCertificate) {
+                if ([string]$sig.SignerCertificate.Subject -match '(^|,\s*)(O|CN)=Valve') {
+                    $result = $true
+                }
+            }
+        }
+        catch {
+            $result = $false
+        }
+    }
+
+    $script:ValveSignCache[$key] = $result
+    return $result
+}
+
+function Test-ProtectedOfficialFile {
+    param($Action, [hashtable]$Variables)
+
+    if ($Action.type -ne 'file') { return $false }
+    $path = Resolve-Template -Text $Action.path -Variables $Variables
+    return (Test-ValveSignedFile -Path $path)
+}
+
 function Normalize-DefenderPath {
     param([string]$Path)
 
@@ -1365,7 +1454,9 @@ function Test-ActionExists {
     switch ($Action.type) {
         'file' {
             $path = Resolve-Template -Text $Action.path -Variables $Variables
-            return [bool](Test-Path -LiteralPath $path)
+            if (-not (Test-Path -LiteralPath $path)) { return $false }
+            if (Test-ValveSignedFile -Path $path) { return $false }
+            return $true
         }
         'registry-key' {
             return [bool](Test-Path -Path $Action.path)
@@ -1375,7 +1466,7 @@ function Test-ActionExists {
             return $null -ne (Get-ItemProperty -Path $Action.path -Name $Action.name -ErrorAction SilentlyContinue)
         }
         'defender-exclusion-path' {
-            $pref = Get-MpPreference -ErrorAction SilentlyContinue
+            $pref = Get-DefenderPreference
             if (-not $pref) { return $false }
             $path = Resolve-Template -Text $Action.path -Variables $Variables
             $target = Normalize-DefenderPath -Path $path
@@ -1387,11 +1478,11 @@ function Test-ActionExists {
             return $false
         }
         'defender-exclusion-extension' {
-            $pref = Get-MpPreference -ErrorAction SilentlyContinue
+            $pref = Get-DefenderPreference
             return $pref -and ($pref.ExclusionExtension -contains $Action.name)
         }
         'defender-exclusion-process' {
-            $pref = Get-MpPreference -ErrorAction SilentlyContinue
+            $pref = Get-DefenderPreference
             return $pref -and ($pref.ExclusionProcess -contains $Action.name)
         }
         'process' {
@@ -1431,6 +1522,7 @@ function Remove-Action {
         'file' {
             $path = Resolve-Template -Text $Action.path -Variables $Variables
             if (-not (Test-Path -LiteralPath $path)) { return 'skipped' }
+            if (Test-ValveSignedFile -Path $path) { return 'protected' }
             if (-not $NoBackup) {
                 $backupName = Join-Path $BackupRoot (ConvertTo-SafeName $path)
                 $parent = Split-Path -Parent $backupName
@@ -1457,25 +1549,25 @@ function Remove-Action {
             return 'skipped'
         }
         'defender-exclusion-path' {
+            $pref = Get-DefenderPreference
+            if (-not $pref) { return 'skipped' }
             $path = Resolve-Template -Text $Action.path -Variables $Variables
-            $pref = Get-MpPreference -ErrorAction SilentlyContinue
             $target = Normalize-DefenderPath -Path $path
             $removed = $false
             foreach ($existing in @($pref.ExclusionPath)) {
                 if ((Normalize-DefenderPath -Path $existing) -eq $target) {
-                    Remove-MpPreference -ExclusionPath $existing
-                    $removed = $true
+                    if (Remove-DefenderExclusion -Kind 'path' -Value $existing) { $removed = $true }
                 }
             }
             if ($removed) { return 'removed' }
             return 'skipped'
         }
         'defender-exclusion-extension' {
-            Remove-MpPreference -ExclusionExtension $Action.name
+            if (-not (Remove-DefenderExclusion -Kind 'extension' -Value $Action.name)) { return 'skipped' }
             return 'removed'
         }
         'defender-exclusion-process' {
-            Remove-MpPreference -ExclusionProcess $Action.name
+            if (-not (Remove-DefenderExclusion -Kind 'process' -Value $Action.name)) { return 'skipped' }
             return 'removed'
         }
         'process' {
@@ -1790,6 +1882,7 @@ $report = [ordered]@{
         removed  = 0
         failed   = 0
         skipped  = 0
+        protected = 0
     }
 }
 
@@ -1800,6 +1893,7 @@ $rules = @($targets.rules) | Where-Object {
 }
 
 $detectedItems = @()
+$protectedItems = @()
 
 $scanTotal = [Math]::Max(1, @($rules).Count)
 $scanCurrent = 0
@@ -1843,6 +1937,13 @@ foreach ($rule in $rules) {
                 Category = (Get-ActionCategory -Action $action)
             }
         }
+        elseif (Test-ProtectedOfficialFile -Action $action -Variables $variables) {
+            $protectedItems += [pscustomobject]@{
+                RuleId = $rule.id
+                RuleTitle = $rule.title
+                Label = $label
+            }
+        }
 
         $ruleReport.actions += [ordered]@{
             type   = $action.type
@@ -1884,6 +1985,15 @@ else {
     }
     Write-KeyValue '已扫描到' ($detectedItems.Count.ToString() + ' 项') Danger
 
+    if (@($protectedItems).Count -gt 0) {
+        Write-Blank
+        Write-Status ('  🛡️ 官方文件保护：{0} 项 Valve 数字签名文件已自动跳过（Steam 官方组件，不清理）' -f @($protectedItems).Count) Success
+        foreach ($p in @($protectedItems) | Select-Object -Unique -Property Label) {
+            Write-Status ('        · ' + $p.Label) Muted
+        }
+        Write-Blank
+    }
+
     Write-Section '⚠️ 注意事项'
     Write-Status '    1. 此工具不影响游戏、存档、创意工坊、MOD，请放心使用~' WarningSoft
     Write-Status '    2. 清理后可能需要重新登录 STEAM !' WarningSoft
@@ -1911,6 +2021,10 @@ else {
                 if ($result -eq 'removed') {
                     $report.summary.removed++
                     Write-Result '✓' '已删除' $item.Label Success
+                }
+                elseif ($result -eq 'protected') {
+                    $report.summary.protected++
+                    Write-Result '🛡' '官方文件' ($item.Label + ' (Valve 数字签名，已保护)') Success
                 }
                 else {
                     $report.summary.skipped++
