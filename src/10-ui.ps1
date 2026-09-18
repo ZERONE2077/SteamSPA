@@ -235,37 +235,13 @@ function Get-RiskColor {
 function Read-CleanupConfirmation {
     Write-Blank
     Write-Section '✅ 确认清理？'
-    Write-Status '  回车/Enter = 确认清理      |  ESC = 取消清理' Muted
-    Write-Status '  选择: ' Accent -NoNewline
-
-    if ([Console]::IsInputRedirected) {
-        Write-Status '取消（非交互环境）' Warning
-        return $false
+    Write-Status '  输入 Y 并回车 = 确认清理      |  其他任何输入 = 取消' Muted
+    $choice = Read-Host '  请选择'
+    if ($choice.Trim().ToUpperInvariant() -eq 'Y') {
+        Write-Status '确认清理' Accent
+        return $true
     }
 
-    $oldTreatControlCAsInput = $null
-    try {
-        $oldTreatControlCAsInput = [Console]::TreatControlCAsInput
-        [Console]::TreatControlCAsInput = $true
-    }
-    catch {}
-
-    try {
-        while ($true) {
-            $key = [Console]::ReadKey($true)
-            if ($key.Key -eq 'Enter') {
-                Write-Status '确认清理' Accent
-                return $true
-            }
-            if ($key.Key -eq 'Escape' -or (($key.Modifiers -band [ConsoleModifiers]::Control) -and $key.Key -eq 'C')) {
-                Write-Status '取消' Warning
-                return $false
-            }
-        }
-    }
-    finally {
-        if ($null -ne $oldTreatControlCAsInput) {
-            try { [Console]::TreatControlCAsInput = $oldTreatControlCAsInput } catch {}
-        }
-    }
+    Write-Status '取消' Warning
+    return $false
 }
