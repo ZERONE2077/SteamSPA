@@ -183,11 +183,6 @@ else {
 }
 
 Write-Blank
-$textReportPath = $null
-if ($report.summary.removed -gt 0 -and $report.summary.failed -eq 0) {
-    $textReportPath = Save-DesktopTextReport -Report $report -DetectedItems $detectedItems -BackupPath $(if (-not $NoBackup) { $backupRoot } else { '' })
-}
-
 Write-Section '🎉 完成'
 if ($report.summary.failed -gt 0) {
     Write-Result '×' '清理状态' '部分项目清理失败' Danger
@@ -205,9 +200,6 @@ Write-KeyValue '发现' $report.summary.detected
 Write-KeyValue '删除' $report.summary.removed Success
 Write-KeyValue '失败' $report.summary.failed Danger
 Write-KeyValue '跳过' $report.summary.skipped Muted
-if ($textReportPath) {
-    Write-KeyValue 'TXT 报告' $textReportPath Path
-}
 
 if ($report.summary.removed -gt 0 -and -not $NoBackup) {
     Write-KeyValue '备份' $backupRoot Path
