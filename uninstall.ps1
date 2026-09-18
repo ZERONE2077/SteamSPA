@@ -6,7 +6,7 @@
 #>
 # NOTE: Chinese UI text is kept as plain UTF-8 for easy editing. Save this file as UTF-8 without BOM.
 Clear-Host
-$host.UI.RawUI.WindowTitle = 'STEAM SPA 假入库清杀工具'
+$host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具'
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -1879,7 +1879,7 @@ function Write-FakeLibraryHistoryClues {
 
 # Application entry point
 Clear-Host
-$host.UI.RawUI.WindowTitle = 'STEAM SPA - 假入库清杀工具'
+$host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具'
 Write-Blank
 Write-GradientText '  ███████ ████████ ███████  █████  ███    ███     ███████ ██████   █████  '
 Write-GradientText '  ██         ██    ██      ██   ██ ████  ████     ██      ██   ██ ██   ██ '
