@@ -11,7 +11,7 @@ $version=Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8|ConvertFrom-J
 if([string]::IsNullOrWhiteSpace([string]$version.version)){throw 'version.json: missing version'}
 if([string]::IsNullOrWhiteSpace([string]$version.updatedAt)){throw 'version.json: missing updatedAt'}
 if(-not $rules.rules -or @($rules.rules).Count -eq 0){throw 'Rule database contains no rules.'}
-$sourceFiles=@('src\00-bootstrap.ps1','src\10-ui.ps1','src\20-environment.ps1','src\30-detection.ps1','src\40-cleanup.ps1','src\50-report.ps1','src\60-history.ps1','src\90-main.ps1')
+$sourceFiles=@('src\00-bootstrap.ps1','src\10-ui.ps1','src\20-environment.ps1','src\30-detection.ps1','src\40-cleanup.ps1','src\60-history.ps1','src\90-main.ps1')
 foreach($file in $sourceFiles){if(-not(Test-Path -LiteralPath(Join-Path $root $file))){throw "Missing source file: $file"}}
 $nl=[Environment]::NewLine
 $bootstrap=Get-Content -LiteralPath(Join-Path $root $sourceFiles[0])-Raw-Encoding UTF8
