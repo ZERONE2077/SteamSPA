@@ -4,17 +4,28 @@ SteamSPA 是一个 Windows PowerShell 工具，用于识别、展示并清理 St
 
 ## 使用
 
+### GitHub Raw
+
 ```powershell
 irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1 | iex
 ```
+
+### jsDelivr CDN
+
+当 GitHub Raw 访问慢、缓存异常或 Windows PowerShell 5.1 出现编码问题时，可使用 jsDelivr：
+
+```powershell
+irm https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 | iex
+```
+
+浏览器直链：
+
+https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1
 
 本地运行：
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 ```
-
-流程：扫描 → 分类展示 → 用户确认 → 清理 → 报告。
-默认不会自动删除；只有明确输入 `Y` 才执行清理。
 
 ## 参数
 
@@ -55,7 +66,6 @@ data/rules.json
 src/
 tools/
 tests/
-research/
-fence
+research/```
 
 Windows PowerShell 5.1+，无需第三方 PowerShell 模块。
