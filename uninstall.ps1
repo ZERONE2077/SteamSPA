@@ -59,910 +59,914 @@ if (-not (Test-Path -LiteralPath $scriptRoot)) {
     New-Item -ItemType Directory -Path $scriptRoot -Force | Out-Null
 }
 
+# Embedded rule database. Source of truth: data/rules.json
 $EmbeddedTargetsJson = @'
 {
-    "$schema":  "./targets.schema.json",
-    "version":  1,
-    "meta":  {
-                 "project":  "SteamSPA",
-                 "description":  "STEAM 假入库残留清理清单。每条规则描述一个来源脚本所留下的痕迹。"
-             },
-    "rules":  [
-                  {
-                      "id":  "steam-inject-dlls",
-                      "title":  "STEAM 目录注入 DLL",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1",
-                                      "scripts/steam.work/steam.icu.001.ps1",
-                                      "scripts/steam-run.com/steamcdkey.cn.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4.dll.old"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4.log"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_42.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_43.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi.log"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi1.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi2.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi3.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\hid.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\hid.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\hid.log"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\zlib1.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\zlib1.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\zlib1.txt"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\zlib1.log"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\version.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\user32.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\User32.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\User32.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\wtsapi32.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\simulator.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\steam_api.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\Sdll.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\video.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\CefResource\\locales\\ff\\core.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\CefResource\\locales\\ff\\dwmapi.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\CefResource\\locales\\ff\\hid.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\CefResource\\locales\\ff\\xinput1_4.dll"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "sample-47-100-121-251",
-                      "title":  "Unialls 假入库家族残留 (需确认)",
-                      "sources":  [
-                                      "scripts/47.100.121.251/47.100.121.251.ps1",
-                                      "scripts/47.98.148.132/47.98.148.132.ps1",
-                                      "scripts/vfc88.cn/vfc88.cn.001.ps1",
-                                      "scripts/vfc88.cn/ss.vfc77.cn.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\core.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\7z.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\versions.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\cons"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "C:\\tmp\\AppData\\LocalLow\\Unialls",
-                                          "recurse":  true
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
-                                          "name":  "DisableRegistryTools"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
-                                          "name":  "DisableRegistryTools"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\core.dll"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\versions.dll"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\cons"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "C:\\tmp\\AppData\\LocalLow\\Unialls"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "C:\\Windows\\Temp"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "steam-config-files",
-                      "title":  "STEAM 配置文件 / Beta 标志 / appdata 缓存",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.work/steam.icu.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\steam.cfg"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\package\\beta"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\config\\appdata.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\appcache\\appdata.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\appcache\\appdata64.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\appdata.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\appdata64.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\appdata64.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\appcache\\packageinfo.vdf"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "registry-steamtools",
-                      "title":  "注册表 HKCU\\Software\\Valve\\Steamtools",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "packageinfo"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "steamclient"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "s"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "c"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "iscdkey"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "ActivateUnlockMode"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "AlwaysStayUnlocked"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "name":  "notUnlockDepot"
-                                      },
-                                      {
-                                          "type":  "registry-key",
-                                          "path":  "HKCU:\\Software\\Valve\\Steamtools",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "appdata-stool",
-                      "title":  "%APPDATA%\\Stool 工具目录",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "https://gitee.com/mrsiyecao/powershell2"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${APPDATA}\\Stool",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "localappdata-steam",
-                      "title":  "%LOCALAPPDATA%\\Steam 客户端缓存目录 (默认禁用，避免登录/启动异常)",
-                      "sources":  [
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1"
-                                  ],
-                      "enabled":  false,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\steam",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "localdata-vdf",
-                      "title":  "%LOCALAPPDATA%\\Steam\\localData.vdf",
-                      "sources":  [
-                                      "scripts/steam.work/steam.icu.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\Steam\\localData.vdf"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "tencent-cache",
-                      "title":  "%LOCALAPPDATA%\\Microsoft\\Tencent 缓存",
-                      "sources":  [
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\Microsoft\\Tencent",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "temp-scripts",
-                      "title":  "下载用的临时脚本",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1",
-                                      "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${USERPROFILE}\\get.ps1"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${ScriptRoot}\\a.ps1"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${TEMP}\\1.ps1"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "defender-exclusions",
-                      "title":  "Windows Defender 排除项 (需确认)",
-                      "sources":  [
-                                      "scripts/steam-run.com/142785900.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.001.ps1",
-                                      "scripts/steam-run.com/steam-run.com.002.ps1",
-                                      "scripts/steam-run.com/steam-run.com.003.ps1",
-                                      "scripts/steam-run.com/steam-run.com.004.ps1",
-                                      "scripts/steam.work/steam.icu.001.ps1",
-                                      "scripts/cdk.ruku.run/a.ps1",
-                                      "scripts/cdk.ruku.run/cdk.ruku.run.ps1",
-                                      "scripts/steam.run/cdks.run.001.ps1",
-                                      "scripts/steam.run/steam.run.001.ps1",
-                                      "scripts/steam.run/steam.run.002.ps1",
-                                      "scripts/steam-run.com/steamcdkey.cn.001.ps1",
-                                      "scripts/steamcn.cc/steamcn.cc.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\dwmapi.dll"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\hid.dll"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${APPDATA}\\Stool"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-extension",
-                                          "name":  "exe"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-extension",
-                                          "name":  "dll"
-                                      },
-                                      {
-                                          "name":  ".exe",
-                                          "type":  "defender-exclusion-extension"
-                                      },
-                                      {
-                                          "name":  ".dll",
-                                          "type":  "defender-exclusion-extension"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\xinput1_4.dll"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\dwmapi.dll"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\hid.dll"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\steamcdk.exe"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${SteamPath}\\SDL3_voder.dll"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-path",
-                                          "path":  "${TEMP}\\sdl3_setup"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-extension",
-                                          "name":  "bin"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-process",
-                                          "name":  "Steam.exe"
-                                      },
-                                      {
-                                          "type":  "defender-exclusion-process",
-                                          "name":  "curl.exe"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "smartscreen-ci-policy-registry",
-                      "title":  "SmartScreen / CI Policy 相关注册表改动 (需确认)",
-                      "sources":  [
-                                      "scripts/cdk.ruku.run/a.ps1",
-                                      "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy",
-                                          "name":  "VerifiedAndReputablePolicyState"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer",
-                                          "name":  "SmartScreenEnabled"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
-                                          "name":  "EnableSmartScreen"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
-                                          "name":  "ConfigureAppInstallControl"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
-                                          "name":  "ConfigureAppInstallControlEnabled"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
-                                          "name":  "EnableSmartScreenInShell"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "startup-steamauthdaemon",
-                      "title":  "启动项 SteamAuthDaemon (需确认)",
-                      "sources":  [
-                                      "scripts/cdk.ruku.run/a.ps1",
-                                      "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-                                          "name":  "SteamAuthDaemon"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "process-steam-auth",
-                      "title":  "steam_auth 进程 (需确认)",
-                      "sources":  [
-                                      "scripts/cdk.ruku.run/a.ps1",
-                                      "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "process",
-                                          "name":  "steam_auth"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "downloaded-steamcdk-exe",
-                      "title":  "STEAM 目录下载的 steamcdk.exe (需确认)",
-                      "sources":  [
-                                      "scripts/cdk.ruku.run/a.ps1",
-                                      "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\steamcdk.exe"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "opensteamtool-root-files",
-                      "title":  "OpenSteamTool 根目录文件",
-                      "sources":  [
-                                      "https://github.com/OpenSteam001/OpenSteamTool"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\OpenSteamTool.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\dwmapi.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\xinput1_4.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\opensteamtool.toml"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "opensteamtool-lua-config",
-                      "title":  "OpenSteamTool Lua 配置目录 (需确认，默认禁用)",
-                      "sources":  [
-                                      "https://github.com/OpenSteam001/OpenSteamTool"
-                                  ],
-                      "enabled":  false,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\config\\lua",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "steamking-installed-app",
-                      "title":  "SteamKing 安装本体残留 (需确认)",
-                      "sources":  [
-                                      "D:/Downloads/SteamKing-Setup-1.5.3.exe"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "medium",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "process",
-                                          "name":  "SteamKing"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "%ProgramFiles%\\SteamKing",
-                                          "recurse":  true
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\SteamKing",
-                                          "recurse":  true
-                                      },
-                                      {
-                                          "type":  "registry-key",
-                                          "path":  "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{A7C3E9F1-2B4D-4F6A-9C8E-1D5F7A3B2E90}_is1",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "steam-extra-exes",
-                      "title":  "STEAM 目录新增可执行文件 (需确认)",
-                      "sources":  [
-                                      "scripts/steam-run.com/steamcdkey.cn.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\steam-lucky.exe"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "fake-library-team-steam-root-artifacts",
-                      "title":  "假入库团队 powershell2 根目录残留 (需确认；游戏素材包已排除)",
-                      "sources":  [
-                                      "https://gitee.com/mrsiyecao/powershell2",
-                                      "scripts/mrsiyecao-powershell2/2.ps1",
-                                      "scripts/mrsiyecao-powershell2/script1.ps1",
-                                      "scripts/mrsiyecao-powershell2/Online.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit64"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit64274"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit.zip"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit64.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit197.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit200.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit203.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit206.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit214.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit215.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\legit218.vdf"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\winhttp-log.txt"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\winhttp-log1.txt"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "steam-apps-manifest-registry",
-                      "title":  "STEAM Apps Manifest 注册表项 (需确认)",
-                      "sources":  [
-                                      "scripts/steam-run.com/steamcdkey.cn.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "registry-key",
-                                          "path":  "HKCU:\\Software\\Valve\\Steam\\Apps\\3545990",
-                                          "recurse":  true
-                                      },
-                                      {
-                                          "type":  "registry-key",
-                                          "path":  "HKCU:\\Software\\Valve\\Steam\\Apps\\2050650",
-                                          "recurse":  true
-                                      },
-                                      {
-                                          "type":  "registry-key",
-                                          "path":  "HKCU:\\Software\\Valve\\Steam\\Apps\\3218580",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "windows-update-pause-policy",
-                      "title":  "Windows Update 暂停更新策略 (需确认)",
-                      "sources":  [
-                                      "scripts/steam-run.com/steamcdkey.cn.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                                          "name":  "FlightSettingsMaxPauseDays"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                                          "name":  "PauseFeatureUpdatesStartTime"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                                          "name":  "PauseFeatureUpdatesEndTime"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                                          "name":  "PauseQualityUpdatesStartTime"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                                          "name":  "PauseQualityUpdatesEndTime"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                                          "name":  "PauseUpdatesStartTime"
-                                      },
-                                      {
-                                          "type":  "registry-value",
-                                          "path":  "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                                          "name":  "PauseUpdatesExpiryTime"
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "sdl3-voder-family",
-                      "title":  "SDL3_voder 假入库家族残留 (steamcn.cc)",
-                      "sources":  [
-                                      "scripts/steamcn.cc/steamcn.cc.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "low",
-                      "actions":  [
-                                      {
-                                          "type":  "file",
-                                          "path":  "${SteamPath}\\SDL3_voder.dll"
-                                      },
-                                      {
-                                          "type":  "file",
-                                          "path":  "${LOCALAPPDATA}\\SDL3\\cache",
-                                          "recurse":  true
-                                      }
-                                  ]
-                  },
-                  {
-                      "id":  "stool-scheduled-tasks",
-                      "title":  "%APPDATA%\\\\Stool 相关计划任务 (需确认)",
-                      "sources":  [
-                                      "scripts/steam-run.com/steamcdkey.cn.001.ps1"
-                                  ],
-                      "enabled":  true,
-                      "risk":  "high",
-                      "confirm":  true,
-                      "actions":  [
-                                      {
-                                          "type":  "task-contains",
-                                          "contains":  "${APPDATA}\\Stool"
-                                      },
-                                      {
-                                          "type":  "task-contains",
-                                          "contains":  "%APPDATA%\\Stool"
-                                      }
-                                  ]
-                  }
-              ]
+    "$schema": "./rules.schema.json",
+    "version": 1,
+    "meta": {
+        "project": "SteamSPA",
+        "description": "STEAM 假入库残留清理清单。每条规则描述一个来源脚本所留下的痕迹。"
+    },
+    "rules": [
+        {
+            "id": "steam-inject-dlls",
+            "title": "STEAM 目录注入 DLL",
+            "sources": [
+                "scripts/steam-run.com/142785900.001.ps1",
+                "scripts/steam-run.com/steam-run.com.001.ps1",
+                "scripts/steam-run.com/steam-run.com.002.ps1",
+                "scripts/steam-run.com/steam-run.com.003.ps1",
+                "scripts/steam-run.com/steam-run.com.004.ps1",
+                "scripts/steam.run/cdks.run.001.ps1",
+                "scripts/steam.run/steam.run.001.ps1",
+                "scripts/steam.run/steam.run.002.ps1",
+                "scripts/steam.work/steam.icu.001.ps1",
+                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "low",
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dwmapi.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput1_4.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput1_4"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput1_4.dll.old"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput1_4.log"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput1_42.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput1_43.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dwmapi.log"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dwmapi1.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dwmapi2.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dwmapi3.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\hid.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\hid.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\hid.log"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\zlib1.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\zlib1.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\zlib1.txt"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\zlib1.log"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\version.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\user32.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\User32.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\User32.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\wtsapi32.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\simulator.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\steam_api.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\Sdll.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\video.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\CefResource\\locales\\ff\\core.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\CefResource\\locales\\ff\\dwmapi.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\CefResource\\locales\\ff\\hid.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\CefResource\\locales\\ff\\xinput1_4.dll"
+                }
+            ]
+        },
+        {
+            "id": "sample-47-100-121-251",
+            "title": "Unialls 假入库家族残留 (需确认)",
+            "sources": [
+                "scripts/47.100.121.251/47.100.121.251.ps1",
+                "scripts/47.98.148.132/47.98.148.132.ps1",
+                "scripts/vfc88.cn/vfc88.cn.001.ps1",
+                "scripts/vfc88.cn/ss.vfc77.cn.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\core.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\7z.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\versions.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\cons"
+                },
+                {
+                    "type": "file",
+                    "path": "C:\\tmp\\AppData\\LocalLow\\Unialls",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+                    "name": "DisableRegistryTools"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+                    "name": "DisableRegistryTools"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\core.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\versions.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\cons"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "C:\\tmp\\AppData\\LocalLow\\Unialls"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "C:\\Windows\\Temp"
+                }
+            ]
+        },
+        {
+            "id": "steam-config-files",
+            "title": "STEAM 配置文件 / Beta 标志 / appdata 缓存",
+            "sources": [
+                "scripts/steam-run.com/142785900.001.ps1",
+                "scripts/steam-run.com/steam-run.com.001.ps1",
+                "scripts/steam-run.com/steam-run.com.002.ps1",
+                "scripts/steam-run.com/steam-run.com.003.ps1",
+                "scripts/steam-run.com/steam-run.com.004.ps1",
+                "scripts/steam.work/steam.icu.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "low",
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\steam.cfg"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\package\\beta"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\config\\appdata.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\appcache\\appdata.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\appcache\\appdata64.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\appdata.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\appdata64.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\appdata64.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\appcache\\packageinfo.vdf"
+                }
+            ]
+        },
+        {
+            "id": "registry-steamtools",
+            "title": "注册表 HKCU\\Software\\Valve\\Steamtools",
+            "sources": [
+                "scripts/steam-run.com/142785900.001.ps1",
+                "scripts/steam-run.com/steam-run.com.001.ps1",
+                "scripts/steam-run.com/steam-run.com.002.ps1",
+                "scripts/steam-run.com/steam-run.com.003.ps1",
+                "scripts/steam-run.com/steam-run.com.004.ps1",
+                "scripts/steam.run/cdks.run.001.ps1",
+                "scripts/steam.run/steam.run.001.ps1",
+                "scripts/steam.run/steam.run.002.ps1"
+            ],
+            "enabled": true,
+            "risk": "low",
+            "actions": [
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "name": "packageinfo"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "name": "steamclient"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "name": "s"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "name": "c"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "name": "iscdkey"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "name": "ActivateUnlockMode"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "name": "AlwaysStayUnlocked"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "name": "notUnlockDepot"
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "recurse": true
+                }
+            ]
+        },
+        {
+            "id": "appdata-stool",
+            "title": "%APPDATA%\\Stool 工具目录",
+            "sources": [
+                "scripts/steam-run.com/142785900.001.ps1",
+                "scripts/steam-run.com/steam-run.com.001.ps1",
+                "scripts/steam-run.com/steam-run.com.002.ps1",
+                "scripts/steam-run.com/steam-run.com.003.ps1",
+                "scripts/steam-run.com/steam-run.com.004.ps1",
+                "https://gitee.com/mrsiyecao/powershell2"
+            ],
+            "enabled": true,
+            "risk": "low",
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${APPDATA}\\Stool",
+                    "recurse": true
+                }
+            ]
+        },
+        {
+            "id": "localappdata-steam",
+            "title": "%LOCALAPPDATA%\\Steam 客户端缓存目录 (默认禁用，避免登录/启动异常)",
+            "sources": [
+                "scripts/steam.run/cdks.run.001.ps1",
+                "scripts/steam.run/steam.run.001.ps1",
+                "scripts/steam.run/steam.run.002.ps1"
+            ],
+            "enabled": false,
+            "risk": "medium",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${LOCALAPPDATA}\\steam",
+                    "recurse": true
+                }
+            ]
+        },
+        {
+            "id": "localdata-vdf",
+            "title": "%LOCALAPPDATA%\\Steam\\localData.vdf",
+            "sources": [
+                "scripts/steam.work/steam.icu.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "low",
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${LOCALAPPDATA}\\Steam\\localData.vdf"
+                }
+            ]
+        },
+        {
+            "id": "tencent-cache",
+            "title": "%LOCALAPPDATA%\\Microsoft\\Tencent 缓存",
+            "sources": [
+                "scripts/steam.run/cdks.run.001.ps1",
+                "scripts/steam.run/steam.run.001.ps1",
+                "scripts/steam.run/steam.run.002.ps1"
+            ],
+            "enabled": true,
+            "risk": "medium",
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${LOCALAPPDATA}\\Microsoft\\Tencent",
+                    "recurse": true
+                }
+            ]
+        },
+        {
+            "id": "temp-scripts",
+            "title": "下载用的临时脚本",
+            "sources": [
+                "scripts/steam-run.com/142785900.001.ps1",
+                "scripts/steam-run.com/steam-run.com.001.ps1",
+                "scripts/steam-run.com/steam-run.com.002.ps1",
+                "scripts/steam-run.com/steam-run.com.003.ps1",
+                "scripts/steam-run.com/steam-run.com.004.ps1",
+                "scripts/steam.run/cdks.run.001.ps1",
+                "scripts/steam.run/steam.run.001.ps1",
+                "scripts/steam.run/steam.run.002.ps1",
+                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+            ],
+            "enabled": true,
+            "risk": "low",
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${USERPROFILE}\\get.ps1"
+                },
+                {
+                    "type": "file",
+                    "path": "${ScriptRoot}\\a.ps1"
+                },
+                {
+                    "type": "file",
+                    "path": "${TEMP}\\1.ps1"
+                }
+            ]
+        },
+        {
+            "id": "defender-exclusions",
+            "title": "Windows Defender 排除项 (需确认)",
+            "sources": [
+                "scripts/steam-run.com/142785900.001.ps1",
+                "scripts/steam-run.com/steam-run.com.001.ps1",
+                "scripts/steam-run.com/steam-run.com.002.ps1",
+                "scripts/steam-run.com/steam-run.com.003.ps1",
+                "scripts/steam-run.com/steam-run.com.004.ps1",
+                "scripts/steam.work/steam.icu.001.ps1",
+                "scripts/cdk.ruku.run/a.ps1",
+                "scripts/cdk.ruku.run/cdk.ruku.run.ps1",
+                "scripts/steam.run/cdks.run.001.ps1",
+                "scripts/steam.run/steam.run.001.ps1",
+                "scripts/steam.run/steam.run.002.ps1",
+                "scripts/steam-run.com/steamcdkey.cn.001.ps1",
+                "scripts/steamcn.cc/steamcn.cc.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\dwmapi.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\hid.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${APPDATA}\\Stool"
+                },
+                {
+                    "type": "defender-exclusion-extension",
+                    "name": "exe"
+                },
+                {
+                    "type": "defender-exclusion-extension",
+                    "name": "dll"
+                },
+                {
+                    "name": ".exe",
+                    "type": "defender-exclusion-extension"
+                },
+                {
+                    "name": ".dll",
+                    "type": "defender-exclusion-extension"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\xinput1_4.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\dwmapi.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\hid.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\steamcdk.exe"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\SDL3_voder.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${TEMP}\\sdl3_setup"
+                },
+                {
+                    "type": "defender-exclusion-extension",
+                    "name": "bin"
+                },
+                {
+                    "type": "defender-exclusion-process",
+                    "name": "Steam.exe"
+                },
+                {
+                    "type": "defender-exclusion-process",
+                    "name": "curl.exe"
+                }
+            ]
+        },
+        {
+            "id": "smartscreen-ci-policy-registry",
+            "title": "SmartScreen / CI Policy 相关注册表改动 (需确认)",
+            "sources": [
+                "scripts/cdk.ruku.run/a.ps1",
+                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy",
+                    "name": "VerifiedAndReputablePolicyState"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer",
+                    "name": "SmartScreenEnabled"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+                    "name": "EnableSmartScreen"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
+                    "name": "ConfigureAppInstallControl"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
+                    "name": "ConfigureAppInstallControlEnabled"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\SmartScreen",
+                    "name": "EnableSmartScreenInShell"
+                }
+            ]
+        },
+        {
+            "id": "startup-steamauthdaemon",
+            "title": "启动项 SteamAuthDaemon (需确认)",
+            "sources": [
+                "scripts/cdk.ruku.run/a.ps1",
+                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+            ],
+            "enabled": true,
+            "risk": "medium",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "registry-value",
+                    "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                    "name": "SteamAuthDaemon"
+                }
+            ]
+        },
+        {
+            "id": "process-steam-auth",
+            "title": "steam_auth 进程 (需确认)",
+            "sources": [
+                "scripts/cdk.ruku.run/a.ps1",
+                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+            ],
+            "enabled": true,
+            "risk": "medium",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "process",
+                    "name": "steam_auth"
+                }
+            ]
+        },
+        {
+            "id": "downloaded-steamcdk-exe",
+            "title": "STEAM 目录下载的 steamcdk.exe (需确认)",
+            "sources": [
+                "scripts/cdk.ruku.run/a.ps1",
+                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\steamcdk.exe"
+                }
+            ]
+        },
+        {
+            "id": "opensteamtool-root-files",
+            "title": "OpenSteamTool 根目录文件",
+            "sources": [
+                "https://github.com/OpenSteam001/OpenSteamTool"
+            ],
+            "enabled": true,
+            "risk": "low",
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\OpenSteamTool.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dwmapi.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput1_4.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\opensteamtool.toml"
+                }
+            ]
+        },
+        {
+            "id": "opensteamtool-lua-config",
+            "title": "OpenSteamTool Lua 配置目录 (需确认，默认禁用)",
+            "sources": [
+                "https://github.com/OpenSteam001/OpenSteamTool"
+            ],
+            "enabled": false,
+            "risk": "medium",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\config\\lua",
+                    "recurse": true
+                }
+            ]
+        },
+        {
+            "id": "steamking-installed-app",
+            "title": "SteamKing 安装本体残留 (需确认)",
+            "sources": [
+                "D:/Downloads/SteamKing-Setup-1.5.3.exe"
+            ],
+            "enabled": true,
+            "risk": "medium",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "process",
+                    "name": "SteamKing"
+                },
+                {
+                    "type": "file",
+                    "path": "%ProgramFiles%\\SteamKing",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${LOCALAPPDATA}\\SteamKing",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{A7C3E9F1-2B4D-4F6A-9C8E-1D5F7A3B2E90}_is1",
+                    "recurse": true
+                }
+            ]
+        },
+        {
+            "id": "steam-extra-exes",
+            "title": "STEAM 目录新增可执行文件 (需确认)",
+            "sources": [
+                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\steam-lucky.exe"
+                }
+            ]
+        },
+        {
+            "id": "fake-library-team-steam-root-artifacts",
+            "title": "假入库团队 powershell2 根目录残留 (需确认；游戏素材包已排除)",
+            "sources": [
+                "https://gitee.com/mrsiyecao/powershell2",
+                "scripts/mrsiyecao-powershell2/2.ps1",
+                "scripts/mrsiyecao-powershell2/script1.ps1",
+                "scripts/mrsiyecao-powershell2/Online.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit64"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit64274"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit.zip"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit64.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit197.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit200.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit203.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit206.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit214.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit215.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\legit218.vdf"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\winhttp-log.txt"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\winhttp-log1.txt"
+                }
+            ]
+        },
+        {
+            "id": "steam-apps-manifest-registry",
+            "title": "STEAM Apps Manifest 注册表项 (需确认)",
+            "sources": [
+                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "registry-key",
+                    "path": "HKCU:\\Software\\Valve\\Steam\\Apps\\3545990",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKCU:\\Software\\Valve\\Steam\\Apps\\2050650",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKCU:\\Software\\Valve\\Steam\\Apps\\3218580",
+                    "recurse": true
+                }
+            ]
+        },
+        {
+            "id": "windows-update-pause-policy",
+            "title": "Windows Update 暂停更新策略 (需确认)",
+            "sources": [
+                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
+                    "name": "FlightSettingsMaxPauseDays"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
+                    "name": "PauseFeatureUpdatesStartTime"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
+                    "name": "PauseFeatureUpdatesEndTime"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
+                    "name": "PauseQualityUpdatesStartTime"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
+                    "name": "PauseQualityUpdatesEndTime"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
+                    "name": "PauseUpdatesStartTime"
+                },
+                {
+                    "type": "registry-value",
+                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
+                    "name": "PauseUpdatesExpiryTime"
+                }
+            ]
+        },
+        {
+            "id": "sdl3-voder-family",
+            "title": "SDL3_voder 假入库家族残留 (steamcn.cc)",
+            "sources": [
+                "scripts/steamcn.cc/steamcn.cc.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "low",
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\SDL3_voder.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${LOCALAPPDATA}\\SDL3\\cache",
+                    "recurse": true
+                }
+            ]
+        },
+        {
+            "id": "stool-scheduled-tasks",
+            "title": "%APPDATA%\\\\Stool 相关计划任务 (需确认)",
+            "sources": [
+                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "task-contains",
+                    "contains": "${APPDATA}\\Stool"
+                },
+                {
+                    "type": "task-contains",
+                    "contains": "%APPDATA%\\Stool"
+                }
+            ]
+        }
+    ]
 }
 '@
+
+# SteamSPA source module
+# Edit this module, then run tools/build.ps1.
 
 function Get-ThemeColor {
     param([string]$Name)
@@ -1233,6 +1237,8 @@ function Read-CleanupConfirmation {
     }
 }
 
+# SteamSPA source module
+# Edit this module, then run tools/build.ps1.
 
 function Resolve-Template {
     param(
@@ -1340,6 +1346,9 @@ function Read-Targets {
     return $EmbeddedTargetsJson | ConvertFrom-Json
 }
 
+# SteamSPA source module
+# Edit this module, then run tools/build.ps1.
+
 function Get-DefenderPreference {
     # Defender 模块在精简版 / Server / 第三方杀软接管时不存在。
     # 命令缺失抛的是 CommandNotFoundException（终止性错误，-ErrorAction 压不住），必须先用 Get-Command 探测。
@@ -1362,29 +1371,6 @@ function Get-DefenderPreference {
     }
 
     return $script:DefenderPreferenceCache
-}
-
-function Remove-DefenderExclusion {
-    param(
-        [ValidateSet('path', 'extension', 'process')][string]$Kind,
-        [string]$Value
-    )
-
-    if (-not (Get-Command -Name Remove-MpPreference -ErrorAction SilentlyContinue)) {
-        return $false
-    }
-
-    try {
-        switch ($Kind) {
-            'path' { Remove-MpPreference -ExclusionPath $Value -ErrorAction Stop }
-            'extension' { Remove-MpPreference -ExclusionExtension $Value -ErrorAction Stop }
-            'process' { Remove-MpPreference -ExclusionProcess $Value -ErrorAction Stop }
-        }
-        return $true
-    }
-    catch {
-        return $false
-    }
 }
 
 function Test-ValveSignedFile {
@@ -1510,6 +1496,32 @@ function Test-ActionExists {
     }
 }
 
+# SteamSPA source module
+# Edit this module, then run tools/build.ps1.
+
+function Remove-DefenderExclusion {
+    param(
+        [ValidateSet('path', 'extension', 'process')][string]$Kind,
+        [string]$Value
+    )
+
+    if (-not (Get-Command -Name Remove-MpPreference -ErrorAction SilentlyContinue)) {
+        return $false
+    }
+
+    try {
+        switch ($Kind) {
+            'path' { Remove-MpPreference -ExclusionPath $Value -ErrorAction Stop }
+            'extension' { Remove-MpPreference -ExclusionExtension $Value -ErrorAction Stop }
+            'process' { Remove-MpPreference -ExclusionProcess $Value -ErrorAction Stop }
+        }
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Remove-Action {
     param(
         $Action,
@@ -1624,7 +1636,6 @@ function Format-ActionLabel {
     }
 }
 
-
 function Get-ActionCategory {
     param($Action)
 
@@ -1664,6 +1675,10 @@ function Get-CategoryTitle {
         default { return '其他' }
     }
 }
+
+# SteamSPA source module
+# Edit this module, then run tools/build.ps1.
+
 function Save-DesktopTextReport {
     param(
         [object]$Report,
@@ -1720,6 +1735,9 @@ function Save-DesktopTextReport {
 
     return $path
 }
+
+# SteamSPA source module
+# Edit this module, then run tools/build.ps1.
 
 function Get-FakeLibraryHistoryClues {
     $historyPaths = New-Object System.Collections.Generic.List[string]
@@ -1856,6 +1874,7 @@ function Write-FakeLibraryHistoryClues {
     Write-Blank
 }
 
+# Application entry point
 Clear-Host
 $host.UI.RawUI.WindowTitle = 'STEAM SPA - 假入库清杀工具'
 Write-Blank
