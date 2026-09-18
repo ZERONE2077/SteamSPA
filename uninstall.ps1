@@ -59,6 +59,9 @@ if (-not (Test-Path -LiteralPath $scriptRoot)) {
     New-Item -ItemType Directory -Path $scriptRoot -Force | Out-Null
 }
 
+$SteamSPAReleaseVersion = '1.0.0'
+$SteamSPAUpdatedAt = '2026-09-18'
+
 # Embedded rule database. Source of truth: data/rules.json
 $EmbeddedTargetsJson = @'
 {
@@ -1886,6 +1889,7 @@ Write-GradientText '  ███████    ██    ███████ �
 Write-Blank
 Write-Status '  假入库清理/专杀工具：秒杀各种注入DLL/STEAM配置/注册表/启动项/系统服务/安全策略/后台进程等' Muted
 Write-Status '  作者：万能小哥' Muted
+Write-Status ('  最后更新：' + $SteamSPAUpdatedAt + ' · 版本：' + $SteamSPAReleaseVersion) Muted
 
 $variables = Get-Variables
 $targets = Read-Targets
