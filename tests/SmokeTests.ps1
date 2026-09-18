@@ -3,7 +3,11 @@ $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $rulesPath=Join-Path $root 'data\rules.json'
 $artifact=Join-Path $root 'uninstall.ps1'
+$versionPath=Join-Path $root 'data\\version.json'
 $rules=Get-Content -LiteralPath $rulesPath -Raw -Encoding UTF8|ConvertFrom-Json
+$version=Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8|ConvertFrom-Json
+if([string]::IsNullOrWhiteSpace([string]$version.version)){throw 'version.json: missing version'}
+if([string]::IsNullOrWhiteSpace([string]$version.updatedAt)){throw 'version.json: missing updatedAt'}
 if($rules.version -lt 1){throw 'rules.json: invalid version'}
 $ids=@($rules.rules|ForEach-Object{$_.id})
 if($ids.Count -ne (@($ids|Select-Object -Unique)).Count){throw 'rules.json: duplicate rule id'}
