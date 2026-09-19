@@ -1,8 +1,22 @@
 # -*- coding: utf-8 -*-
-"""SteamSPA 发布：commit + push（push 必须走 python，见 docs/维护笔记.md）。"""
+"""SteamSPA 发布：commit + push（push 必须走 python，见 research/docs/维护笔记.md）。"""
 import subprocess, sys, io, os, time
 
-ROOT = r'D:\Dev\SteamSPA'
+
+def _find_root(start):
+    """向上找到含 data/ 子目录的仓库根，避免把本机绝对路径写进仓库。"""
+    d = start
+    for _ in range(5):
+        if os.path.isdir(os.path.join(d, 'data')):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return start
+
+
+ROOT = _find_root(os.path.dirname(os.path.abspath(__file__)))
 
 
 def run(args, env=None):
@@ -33,12 +47,13 @@ def main():
         print('\n'.join(out))
         return rc
 
-    # git push 在这个环境里会偶发 exit=128 且零输出，重试即可
+    # git push 在这个环境里会返回 exit=128 且零输出：
+    # 必须显式指定 wincred，默认的 GCM(manager) 在沙箱里读不到凭据。
     env = dict(os.environ)
     env['GIT_TERMINAL_PROMPT'] = '0'
     env['GCM_INTERACTIVE'] = 'never'
     for attempt in (1, 2, 3):
-        rc, so, se = run(['push', 'origin', 'main'], env)
+        rc, so, se = run(['-c', 'credential.helper=wincred', 'push', 'origin', 'main'], env)
         out.append('push try%d rc=%d\n%s%s' % (attempt, rc, so, se))
         if rc == 0:
             break
