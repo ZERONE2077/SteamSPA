@@ -2,8 +2,8 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $rulesPath=Join-Path $root 'data\rules.json'
-$artifact=Join-Path $root 'uninstall.ps1'
-$versionPath=Join-Path $root 'data\\version.json'
+$artifact='uninstall.ps1'
+$versionPath=Join-Path $root 'data\version.json'
 $rules=Get-Content -LiteralPath $rulesPath -Raw -Encoding UTF8|ConvertFrom-Json
 $version=Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8|ConvertFrom-Json
 if([string]::IsNullOrWhiteSpace([string]$version.version)){throw 'version.json: missing version'}
@@ -21,8 +21,9 @@ $files=@($artifact)+@('src\00-bootstrap.ps1','src\10-ui.ps1','src\20-environment
 foreach($file in $files){
   $path=Join-Path $root $file
   $tokens=$null;$errors=$null
-  [System.Management.Automation.Language.Parser]::ParseFile($path,[ref]$tokens,[ref]$errors)|Out-Null
-  if($errors.Count -gt 0){throw "PowerShell parse failed: $file"}
+  $text=[IO.File]::ReadAllText($path,[Text.Encoding]::UTF8)
+  [System.Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$errors)|Out-Null
+  if($errors.Count -gt 0){throw "PowerShell parse failed: $file : $($errors[0].Message)"}
 }
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'tools\build.ps1') -Check
 if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}

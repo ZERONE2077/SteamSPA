@@ -76,16 +76,16 @@ $EmbeddedTargetsJson = @'
             "id": "steam-inject-dlls",
             "title": "STEAM 目录注入 DLL",
             "sources": [
-                "scripts/steam-run.com/142785900.001.ps1",
-                "scripts/steam-run.com/steam-run.com.001.ps1",
-                "scripts/steam-run.com/steam-run.com.002.ps1",
-                "scripts/steam-run.com/steam-run.com.003.ps1",
-                "scripts/steam-run.com/steam-run.com.004.ps1",
-                "scripts/steam.run/cdks.run.001.ps1",
-                "scripts/steam.run/steam.run.001.ps1",
-                "scripts/steam.run/steam.run.002.ps1",
-                "scripts/steam.work/steam.icu.001.ps1",
-                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+                "research/samples/steam-run.com/142785900.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.002.ps1",
+                "research/samples/steam-run.com/steam-run.com.003.ps1",
+                "research/samples/steam-run.com/steam-run.com.004.ps1",
+                "research/samples/steam.run/cdks.run.001.ps1",
+                "research/samples/steam.run/steam.run.001.ps1",
+                "research/samples/steam.run/steam.run.002.ps1",
+                "research/samples/steam.work/steam.icu.001.ps1",
+                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -220,10 +220,10 @@ $EmbeddedTargetsJson = @'
             "id": "sample-47-100-121-251",
             "title": "Unialls 假入库家族残留 (需确认)",
             "sources": [
-                "scripts/47.100.121.251/47.100.121.251.ps1",
-                "scripts/47.98.148.132/47.98.148.132.ps1",
-                "scripts/vfc88.cn/vfc88.cn.001.ps1",
-                "scripts/vfc88.cn/ss.vfc77.cn.001.ps1"
+                "research/samples/47.100.121.251/47.100.121.251.ps1",
+                "research/samples/47.98.148.132/47.98.148.132.ps1",
+                "research/samples/vfc88.cn/vfc88.cn.001.ps1",
+                "research/samples/vfc88.cn/ss.vfc77.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -286,12 +286,12 @@ $EmbeddedTargetsJson = @'
             "id": "steam-config-files",
             "title": "STEAM 配置文件 / Beta 标志 / appdata 缓存",
             "sources": [
-                "scripts/steam-run.com/142785900.001.ps1",
-                "scripts/steam-run.com/steam-run.com.001.ps1",
-                "scripts/steam-run.com/steam-run.com.002.ps1",
-                "scripts/steam-run.com/steam-run.com.003.ps1",
-                "scripts/steam-run.com/steam-run.com.004.ps1",
-                "scripts/steam.work/steam.icu.001.ps1"
+                "research/samples/steam-run.com/142785900.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.002.ps1",
+                "research/samples/steam-run.com/steam-run.com.003.ps1",
+                "research/samples/steam-run.com/steam-run.com.004.ps1",
+                "research/samples/steam.work/steam.icu.001.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -338,14 +338,14 @@ $EmbeddedTargetsJson = @'
             "id": "registry-steamtools",
             "title": "注册表 HKCU\\Software\\Valve\\Steamtools",
             "sources": [
-                "scripts/steam-run.com/142785900.001.ps1",
-                "scripts/steam-run.com/steam-run.com.001.ps1",
-                "scripts/steam-run.com/steam-run.com.002.ps1",
-                "scripts/steam-run.com/steam-run.com.003.ps1",
-                "scripts/steam-run.com/steam-run.com.004.ps1",
-                "scripts/steam.run/cdks.run.001.ps1",
-                "scripts/steam.run/steam.run.001.ps1",
-                "scripts/steam.run/steam.run.002.ps1"
+                "research/samples/steam-run.com/142785900.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.002.ps1",
+                "research/samples/steam-run.com/steam-run.com.003.ps1",
+                "research/samples/steam-run.com/steam-run.com.004.ps1",
+                "research/samples/steam.run/cdks.run.001.ps1",
+                "research/samples/steam.run/steam.run.001.ps1",
+                "research/samples/steam.run/steam.run.002.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -401,11 +401,11 @@ $EmbeddedTargetsJson = @'
             "id": "appdata-stool",
             "title": "%APPDATA%\\Stool 工具目录",
             "sources": [
-                "scripts/steam-run.com/142785900.001.ps1",
-                "scripts/steam-run.com/steam-run.com.001.ps1",
-                "scripts/steam-run.com/steam-run.com.002.ps1",
-                "scripts/steam-run.com/steam-run.com.003.ps1",
-                "scripts/steam-run.com/steam-run.com.004.ps1",
+                "research/samples/steam-run.com/142785900.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.002.ps1",
+                "research/samples/steam-run.com/steam-run.com.003.ps1",
+                "research/samples/steam-run.com/steam-run.com.004.ps1",
                 "https://gitee.com/mrsiyecao/powershell2"
             ],
             "enabled": true,
@@ -422,9 +422,9 @@ $EmbeddedTargetsJson = @'
             "id": "localappdata-steam",
             "title": "%LOCALAPPDATA%\\Steam 客户端缓存目录 (默认禁用，避免登录/启动异常)",
             "sources": [
-                "scripts/steam.run/cdks.run.001.ps1",
-                "scripts/steam.run/steam.run.001.ps1",
-                "scripts/steam.run/steam.run.002.ps1"
+                "research/samples/steam.run/cdks.run.001.ps1",
+                "research/samples/steam.run/steam.run.001.ps1",
+                "research/samples/steam.run/steam.run.002.ps1"
             ],
             "enabled": false,
             "risk": "medium",
@@ -441,7 +441,7 @@ $EmbeddedTargetsJson = @'
             "id": "localdata-vdf",
             "title": "%LOCALAPPDATA%\\Steam\\localData.vdf",
             "sources": [
-                "scripts/steam.work/steam.icu.001.ps1"
+                "research/samples/steam.work/steam.icu.001.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -456,9 +456,9 @@ $EmbeddedTargetsJson = @'
             "id": "tencent-cache",
             "title": "%LOCALAPPDATA%\\Microsoft\\Tencent 缓存",
             "sources": [
-                "scripts/steam.run/cdks.run.001.ps1",
-                "scripts/steam.run/steam.run.001.ps1",
-                "scripts/steam.run/steam.run.002.ps1"
+                "research/samples/steam.run/cdks.run.001.ps1",
+                "research/samples/steam.run/steam.run.001.ps1",
+                "research/samples/steam.run/steam.run.002.ps1"
             ],
             "enabled": true,
             "risk": "medium",
@@ -474,15 +474,15 @@ $EmbeddedTargetsJson = @'
             "id": "temp-scripts",
             "title": "下载用的临时脚本",
             "sources": [
-                "scripts/steam-run.com/142785900.001.ps1",
-                "scripts/steam-run.com/steam-run.com.001.ps1",
-                "scripts/steam-run.com/steam-run.com.002.ps1",
-                "scripts/steam-run.com/steam-run.com.003.ps1",
-                "scripts/steam-run.com/steam-run.com.004.ps1",
-                "scripts/steam.run/cdks.run.001.ps1",
-                "scripts/steam.run/steam.run.001.ps1",
-                "scripts/steam.run/steam.run.002.ps1",
-                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+                "research/samples/steam-run.com/142785900.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.002.ps1",
+                "research/samples/steam-run.com/steam-run.com.003.ps1",
+                "research/samples/steam-run.com/steam-run.com.004.ps1",
+                "research/samples/steam.run/cdks.run.001.ps1",
+                "research/samples/steam.run/steam.run.001.ps1",
+                "research/samples/steam.run/steam.run.002.ps1",
+                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -505,19 +505,19 @@ $EmbeddedTargetsJson = @'
             "id": "defender-exclusions",
             "title": "Windows Defender 排除项 (需确认)",
             "sources": [
-                "scripts/steam-run.com/142785900.001.ps1",
-                "scripts/steam-run.com/steam-run.com.001.ps1",
-                "scripts/steam-run.com/steam-run.com.002.ps1",
-                "scripts/steam-run.com/steam-run.com.003.ps1",
-                "scripts/steam-run.com/steam-run.com.004.ps1",
-                "scripts/steam.work/steam.icu.001.ps1",
-                "scripts/cdk.ruku.run/a.ps1",
-                "scripts/cdk.ruku.run/cdk.ruku.run.ps1",
-                "scripts/steam.run/cdks.run.001.ps1",
-                "scripts/steam.run/steam.run.001.ps1",
-                "scripts/steam.run/steam.run.002.ps1",
-                "scripts/steam-run.com/steamcdkey.cn.001.ps1",
-                "scripts/steamcn.cc/steamcn.cc.001.ps1"
+                "research/samples/steam-run.com/142785900.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.001.ps1",
+                "research/samples/steam-run.com/steam-run.com.002.ps1",
+                "research/samples/steam-run.com/steam-run.com.003.ps1",
+                "research/samples/steam-run.com/steam-run.com.004.ps1",
+                "research/samples/steam.work/steam.icu.001.ps1",
+                "research/samples/cdk.ruku.run/a.ps1",
+                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1",
+                "research/samples/steam.run/cdks.run.001.ps1",
+                "research/samples/steam.run/steam.run.001.ps1",
+                "research/samples/steam.run/steam.run.002.ps1",
+                "research/samples/steam-run.com/steamcdkey.cn.001.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.001.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -597,8 +597,8 @@ $EmbeddedTargetsJson = @'
             "id": "smartscreen-ci-policy-registry",
             "title": "SmartScreen / CI Policy 相关注册表改动 (需确认)",
             "sources": [
-                "scripts/cdk.ruku.run/a.ps1",
-                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+                "research/samples/cdk.ruku.run/a.ps1",
+                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -640,8 +640,8 @@ $EmbeddedTargetsJson = @'
             "id": "startup-steamauthdaemon",
             "title": "启动项 SteamAuthDaemon (需确认)",
             "sources": [
-                "scripts/cdk.ruku.run/a.ps1",
-                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+                "research/samples/cdk.ruku.run/a.ps1",
+                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "medium",
@@ -658,8 +658,8 @@ $EmbeddedTargetsJson = @'
             "id": "process-steam-auth",
             "title": "steam_auth 进程 (需确认)",
             "sources": [
-                "scripts/cdk.ruku.run/a.ps1",
-                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+                "research/samples/cdk.ruku.run/a.ps1",
+                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "medium",
@@ -675,8 +675,8 @@ $EmbeddedTargetsJson = @'
             "id": "downloaded-steamcdk-exe",
             "title": "STEAM 目录下载的 steamcdk.exe (需确认)",
             "sources": [
-                "scripts/cdk.ruku.run/a.ps1",
-                "scripts/cdk.ruku.run/cdk.ruku.run.ps1"
+                "research/samples/cdk.ruku.run/a.ps1",
+                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -736,7 +736,7 @@ $EmbeddedTargetsJson = @'
             "id": "steamking-installed-app",
             "title": "SteamKing 安装本体残留 (需确认)",
             "sources": [
-                "D:/Downloads/SteamKing-Setup-1.5.3.exe"
+                "SteamKing-Setup-1.5.3.exe (local sample, not archived)"
             ],
             "enabled": true,
             "risk": "medium",
@@ -767,7 +767,7 @@ $EmbeddedTargetsJson = @'
             "id": "steam-extra-exes",
             "title": "STEAM 目录新增可执行文件 (需确认)",
             "sources": [
-                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -784,9 +784,9 @@ $EmbeddedTargetsJson = @'
             "title": "假入库团队 powershell2 根目录残留 (需确认；游戏素材包已排除)",
             "sources": [
                 "https://gitee.com/mrsiyecao/powershell2",
-                "scripts/mrsiyecao-powershell2/2.ps1",
-                "scripts/mrsiyecao-powershell2/script1.ps1",
-                "scripts/mrsiyecao-powershell2/Online.ps1"
+                "research/samples/mrsiyecao-powershell2/2.ps1",
+                "research/samples/mrsiyecao-powershell2/script1.ps1",
+                "research/samples/mrsiyecao-powershell2/Online.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -854,7 +854,7 @@ $EmbeddedTargetsJson = @'
             "id": "steam-apps-manifest-registry",
             "title": "STEAM Apps Manifest 注册表项 (需确认)",
             "sources": [
-                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -881,7 +881,7 @@ $EmbeddedTargetsJson = @'
             "id": "windows-update-pause-policy",
             "title": "Windows Update 暂停更新策略 (需确认)",
             "sources": [
-                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -928,7 +928,7 @@ $EmbeddedTargetsJson = @'
             "id": "sdl3-voder-family",
             "title": "SDL3_voder 假入库家族残留 (steamcn.cc)",
             "sources": [
-                "scripts/steamcn.cc/steamcn.cc.001.ps1"
+                "research/samples/steamcn.cc/steamcn.cc.001.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -948,7 +948,7 @@ $EmbeddedTargetsJson = @'
             "id": "stool-scheduled-tasks",
             "title": "%APPDATA%\\\\Stool 相关计划任务 (需确认)",
             "sources": [
-                "scripts/steam-run.com/steamcdkey.cn.001.ps1"
+                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "high",

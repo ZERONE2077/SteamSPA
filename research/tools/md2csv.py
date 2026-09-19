@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """把 data/痕迹总表.md 的表格同步成 CSV（UTF-8 BOM，Excel/AI 通用）。
 
-用法:
-    python tools/md2csv.py                      # 默认 data/痕迹总表.md -> .csv
-    python tools/md2csv.py <some.md> [out.csv]
+用法（在仓库根执行）:
+    python research/tools/md2csv.py                      # 默认 data/痕迹总表.md -> .csv
+    python research/tools/md2csv.py <some.md> [out.csv]
 
 规则:
 - 只取以 | 开头的行；跳过分隔行（全是 - 和空格）。
@@ -12,7 +12,20 @@
 """
 import io, os, re, sys, csv
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _find_root(start):
+    """向上找到含 data/ 子目录的仓库根（脚本从 tools/ 挪到 research/tools/ 后不再写死层数）。"""
+    d = start
+    for _ in range(5):
+        if os.path.isdir(os.path.join(d, 'data')):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return start
+
+
+ROOT = _find_root(os.path.dirname(os.path.abspath(__file__)))
 
 # 中文表头 -> 英文列名（AI 友好、省 token）
 HEADER_MAP = {

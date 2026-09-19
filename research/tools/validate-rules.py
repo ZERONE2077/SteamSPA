@@ -1,14 +1,28 @@
 # -*- coding: utf-8 -*-
 """校验 uninstall.ps1 内嵌的规则 JSON。
 
-用法：python tools/validate-rules.py [uninstall.ps1 路径]
+用法（在仓库根执行）：python research/tools/validate-rules.py [uninstall.ps1 路径]
 
 不要写死行号范围抽 JSON —— 规则增删会让边界漂移（2026-09-15 踩过）。
 用 here-string 锚点 + 括号配对定位，自动跳过字符串内的花括号。
 """
 import json, os, sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def _find_root(start):
+    """向上找到含 data/ 子目录的仓库根（脚本从 tools/ 挪到 research/tools/ 后不再写死层数）。"""
+    d = start
+    for _ in range(5):
+        if os.path.isdir(os.path.join(d, 'data')):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return start
+
+
+ROOT = _find_root(os.path.dirname(os.path.abspath(__file__)))
 PATH = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'uninstall.ps1')
 
 t = open(PATH, encoding='utf-8').read()
@@ -60,14 +74,18 @@ print('disabled: %s' % (','.join(dis) if dis else '(none)'))
 ty = sorted({a['type'] for r in rules for a in r['actions']})
 print('action-types: %s' % ','.join(ty))
 
-missing, refs = [], set()
+missing, refs, extra = [], set(), []
 for r in rules:
     for s in r.get('sources', []):
-        if s.startswith('scripts/'):
+        if s.startswith('research/samples/'):
             refs.add(s)
-            if not os.path.exists(os.path.join(ROOT, s.replace('/', '\\'))):
+            if not os.path.exists(os.path.join(ROOT, s)):
                 missing.append(s)
+        elif not s.startswith('http'):
+            extra.append(s)
 print('source-refs: %d   missing: %s' % (len(refs), ','.join(sorted(set(missing))) or '(none)'))
+if extra:
+    print('non-path sources (info): %s' % '; '.join(sorted(set(extra))))
 
 if dup or missing:
     sys.exit(2)

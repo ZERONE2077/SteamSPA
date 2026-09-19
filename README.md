@@ -12,19 +12,23 @@ irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1 | i
 
 ### jsDelivr CDN
 
-当 GitHub Raw 访问慢、缓存异常或 Windows PowerShell 5.1 出现编码问题时，可使用 jsDelivr：
+jsDelivr 在国内更快，但它把 `.ps1` 当二进制返回（`Content-Type: application/octet-stream`，不带 charset），**Windows PowerShell 5.1 的 `irm` 会按 ISO-8859-1 解码，中文全部乱码**。必须按字节取回再按 UTF-8 解：
 
 ```powershell
-irm https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 | iex
+$u = 'https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?' + [guid]::NewGuid().ToString('N')
+iex ([Text.Encoding]::UTF8.GetString((iwr $u -UseBasicParsing).RawContentStream.ToArray()).TrimStart([char]0xFEFF))
 ```
+
+PowerShell 7 默认 UTF-8，用 `irm ... | iex` 也正常。
 
 浏览器直链：
 
 https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1
 
-本地运行：
+本地运行（`-File` 在 5.1 下会按 ANSI 解码导致中文乱码，改用显式 UTF-8 读取）：
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((Get-Content .\uninstall.ps1 -Raw -Encoding UTF8)))"
 ```
 
 ## 参数
@@ -66,7 +70,7 @@ data/rules.json
 src/
 tools/
 tests/
-research/
+schemas/
 ```
 
 Windows PowerShell 5.1+，无需第三方 PowerShell 模块。
