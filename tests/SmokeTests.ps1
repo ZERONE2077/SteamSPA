@@ -17,7 +17,7 @@ foreach($rule in @($rules.rules)){
   if($rule.risk -notin $validRisks){throw "rules.json: invalid risk $($rule.risk)"}
   if(-not $rule.actions -or @($rule.actions).Count -eq 0){throw "rules.json: rule $($rule.id) has no actions"}
 }
-$files=@($artifact)+@('src\00-bootstrap.ps1','src\10-ui.ps1','src\20-environment.ps1','src\30-detection.ps1','src\40-cleanup.ps1','src\50-report.ps1','src\60-history.ps1','src\90-main.ps1')
+$files=@($artifact)+@('src\00-bootstrap.ps1','src\10-ui.ps1','src\20-environment.ps1','src\30-detection.ps1','src\40-cleanup.ps1','src\60-history.ps1','src\90-main.ps1')
 foreach($file in $files){
   $path=Join-Path $root $file
   $tokens=$null;$errors=$null
