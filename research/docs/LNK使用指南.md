@@ -647,16 +647,25 @@ WT 版把 Arguments 换成（结尾多三行防闪退，见 14 节）：
 
 **触发条件**：`Invoke-RestMethod` / `Invoke-WebRequest` 在 **Windows PowerShell 5.1** 下，若响应头 `Content-Type` 不带 `charset`，默认按 ISO-8859-1 解码。实测各来源：
 
-| 来源 | Content-Type（实测 2026-09-11） | PS 5.1 `irm` | PS 7 `irm` |
+| 来源 | Content-Type（2026-09-20 复测） | PS 5.1 `irm` | PS 7 `irm` |
 |---|---|---|---|
-| `cdn.jsdelivr.net` | `application/octet-stream` | ❌ 乱码（80637 字符 = 逐字节） | ✅ |
+| `cdn.jsdelivr.net` | `application/octet-stream` | ❌ 乱码（字符数 = 字节数） | ✅ |
 | `fastly.jsdelivr.net` | `application/octet-stream` | ❌ 乱码 | ✅ |
 | `gcore.jsdelivr.net` | `application/octet-stream` | ❌ 乱码 | ✅ |
 | `jsd.onmicrosoft.cn` | `application/octet-stream` | ❌ 乱码 | ✅ |
 | `cdn.jsdmirror.com` | `application/octet-stream` | ❌ 乱码 | ✅ |
 | `raw.githubusercontent.com` | `text/plain; charset=utf-8` | ✅ 正常 | ✅ |
 
-PowerShell 7 默认 UTF-8，所以本地用 pwsh 测不出来——**必须用 `powershell.exe`（5.1）复测**。
+**判据**：不要记字符数（会随文件版本漂移），记**长度关系**——同一份文件（`Content-Length` 两边完全一致，缓存不改内容）：
+
+| 取法 | `irm` 结果长度 | 中文字符 |
+|---|---|---|
+| PS 5.1 `irm`（坏） | **= 字节数**（70766） | ❌ 无 CJK，出现 `æ` `ç` `å` 族 |
+| PS 7 `irm`（好） | **< 字节数**（68340） | ✅ 正常 |
+
+逐字节 1:1 说明按 Latin-1 解了；字符数少于字节数才是真 UTF-8。PowerShell 7 默认 UTF-8，所以本地用 pwsh 测不出来——**必须用 `powershell.exe`（5.1）复测**。
+
+自测脚本（`temp/enc_probe.ps1`，全 ASCII 以免 `-File` 按 ANSI 解码）：对比 `[Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray())` 与 `irm $u` 的长度和 CJK 命中。
 
 **正确写法**（5.1 / 7 都正常，实测）：
 
@@ -678,12 +687,8 @@ iex $t
 
 `TrimStart([char]0xFEFF)` 是为了顺手吃掉 BOM——见第 5 节，`iex` 遇到 BOM 会报 `﻿<# 无法识别`。
 
-**功能影响（不只是显示）**：脚本里唯一带中文的“数据”是这条路径——
+**功能影响（2026-09-20 复核，已归零）**：曾经脚本里唯一带中文的“数据”是规则里的 `${SteamPath}\ANNO117 - 副本.zip`，乱码后不再等于真实文件名、该条检测会静默失效。该路径已连同整组人工搬运素材从数据源删除，现在**规则里 0 条非 ASCII `path`、rule id 全 ASCII**（脚本核对过）。
 
-```json
-"path":  "${SteamPath}\\ANNO117 - 副本.zip"
-```
-
-乱码后该字符串不再等于真实文件名，这条残留检测会失效（其余规则路径全是 ASCII，不受影响）。所以乱码不是纯显示问题，仍应修掉。
+所以乱码目前只剩显示层面：`-Only <id>` 走 ASCII 的 rule id，检测与清理照常跑完，坏的是 UI 文案和 TXT 报告里的中文。**但仍应修掉**——客户看到满屏 `æ¸ç` 会认定工具坏了；而且哪天新增带中文路径的规则，功能失效会立刻回来。新增规则若含中文路径，必须同时保留字节级取回写法。
 
 **防呆**：payload 里加了 `$spaText.Contains('SteamSPA')` 的长度/内容校验，避免镜像返回 200 的 HTML 错误页被直接喂给 `iex`。
