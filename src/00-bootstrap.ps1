@@ -4,7 +4,8 @@
 .DESCRIPTION
     Scans SteamSPA leftovers first, then asks for confirmation before cleanup.
 #>
-# NOTE: Chinese UI text is kept as plain UTF-8 for easy editing. Save this file as UTF-8 without BOM.
+# NOTE: Chinese UI text is kept as UTF-8. The generated uninstall.ps1 uses a BOM
+# so Windows PowerShell 5.1 reads it correctly on non-UTF-8 Windows code pages.
 Clear-Host
 $host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具'
 $OutputEncoding = [System.Text.Encoding]::UTF8

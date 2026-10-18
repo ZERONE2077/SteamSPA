@@ -4,8 +4,8 @@
 """
 import os, re, io
 
-ROOT = r'D:\Dev\SteamSPA'
-SCRIPTS = os.path.join(ROOT, 'scripts')
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCRIPTS = os.path.join(ROOT, 'research', 'samples')
 OUT = os.path.join(ROOT, 'temp', 'steamcn', 'samples-writes.md')
 
 PATS = [
@@ -27,6 +27,7 @@ PATS = [
 ]
 
 def main():
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     files = []
     for dirpath, _, names in os.walk(SCRIPTS):
         for n in sorted(names):

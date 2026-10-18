@@ -94,20 +94,19 @@ function Remove-Action {
         }
         'task' {
             Unregister-ScheduledTask -TaskName $Action.name -Confirm:$false
+            Get-ScheduledTaskSnapshot -Refresh | Out-Null
             return 'removed'
         }
         'task-contains' {
             $needle = Resolve-Template -Text $Action.contains -Variables $Variables
-            $matches = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object {
-                $task = $_
-                @($task.Actions) | Where-Object {
-                    ([string]$_.Execute -like "*$needle*") -or ([string]$_.Arguments -like "*$needle*")
-                }
-            })
+            $matches = @(Find-ScheduledTasksByContains -Needle $needle)
             foreach ($task in $matches) {
-                Unregister-ScheduledTask -TaskName $task.TaskName -TaskPath $task.TaskPath -Confirm:$false
+                Unregister-ScheduledTask -TaskName $task.Name -TaskPath $task.Path -Confirm:$false
             }
-            if ($matches.Count -gt 0) { return 'removed' }
+            if ($matches.Count -gt 0) {
+                Get-ScheduledTaskSnapshot -Refresh | Out-Null
+                return 'removed'
+            }
             return 'skipped'
         }
         default {
@@ -125,15 +124,14 @@ function Format-ActionLabel {
         'registry-value' { return "$($Action.path)\$($Action.name)" }
         'defender-exclusion-path' {
             $path = Resolve-Template -Text $Action.path -Variables $Variables
-            $kind = if (Test-Path -LiteralPath $path -PathType Container) { 'Folder' } elseif (Test-Path -LiteralPath $path -PathType Leaf) { 'File' } else { 'Path' }
-            return "Defender ${kind}: $path"
+            return $path
         }
-        'defender-exclusion-extension' { return "Defender Extension: $($Action.name)" }
-        'defender-exclusion-process' { return "Defender Process: $($Action.name)" }
-        'process' { return "Process: $($Action.name)" }
-        'service' { return "Service: $($Action.name)" }
-        'task' { return "Task: $($Action.name)" }
-        'task-contains' { return "Task contains: $(Resolve-Template -Text $Action.contains -Variables $Variables)" }
+        'defender-exclusion-extension' { return "扩展名: $($Action.name)" }
+        'defender-exclusion-process' { return "排除进程: $($Action.name)" }
+        'process' { return "进程: $($Action.name)" }
+        'service' { return "服务: $($Action.name)" }
+        'task' { return "计划任务: $($Action.name)" }
+        'task-contains' { return "计划任务包含: $(Resolve-Template -Text $Action.contains -Variables $Variables)" }
         default { return $Action.type }
     }
 }
@@ -144,10 +142,8 @@ function Get-ActionCategory {
     switch ($Action.type) {
         'file' {
             $p = [string]$Action.path
-            if ($p -match '\\.exe($|\\.)') { return 'exe' }
-            if ($p -match '\\.dll($|\\.)') { return 'dll' }
-            if ($p -match 'steam\.cfg|appdata\.vdf|packageinfo\.vdf|localData\.vdf|package\\\\beta|opensteamtool\.toml|config\\\\lua') { return 'steam-config' }
-            return 'file'
+            if ($p -match 'steam\.cfg|appdata\d*\.vdf|packageinfo\.vdf|localData\.vdf|package\\beta|opensteamtool\.toml|config\\lua') { return 'config' }
+            return 'files'
         }
         'registry-key' { return 'registry' }
         'registry-value' { return 'registry' }
@@ -162,18 +158,24 @@ function Get-ActionCategory {
     }
 }
 
+function Get-ActionIdentity {
+    param($Action, [hashtable]$Variables)
+
+    $target = [string](Format-ActionLabel -Action $Action -Variables $Variables)
+    $target = $target.Trim().TrimEnd('\', '/')
+    return ([string]$Action.type).ToLowerInvariant() + '|' + $target.ToLowerInvariant()
+}
+
 function Get-CategoryTitle {
     param([string]$Category)
 
     switch ($Category) {
-        'exe' { return '可执行文件' }
-        'dll' { return '注入 DLL' }
-        'steam-config' { return 'STEAM 配置项' }
+        'files' { return '文件' }
+        'config' { return '配置' }
         'registry' { return '注册表' }
-        'startup' { return '启动项 / 服务 / 计划任务' }
-        'security' { return '安全排除项 / 系统策略' }
-        'process' { return '后台驻留进程' }
-        'file' { return '文件 / 目录残留' }
+        'startup' { return '启动项' }
+        'security' { return '安全项' }
+        'process' { return '进程' }
         default { return '其他' }
     }
 }

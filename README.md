@@ -52,6 +52,8 @@ uninstall.ps1  ← 唯一对外分发产物
 
 `data/rules.json` 是运行规则的唯一数据源。修改规则或源码后执行 `tools/build.ps1`。
 
+样本归档、规则更新和验证步骤见 `research/README.md`。
+
 ## 安全设计
 
 - 扫描阶段不删除文件。

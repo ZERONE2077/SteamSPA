@@ -1,14 +1,14 @@
 ﻿zone,name,type,src,ours,action,note
-steam根目录,dwmapi.dll,file,Unialls;Steam-Run,steam-inject-dlls,clear,
+steam根目录,dwmapi.dll,file,Unialls;Steam-Run,steam-inject-dlls,clear,2026-10-18 样本 110592 B / SHA256 `7DC5E48B...F813C997`；含 `sdko.dll` / `bin\diversion.dll` 代理加载链
 steam根目录,dwmapi.log,file,Steam-Run,steam-inject-dlls,clear,下载中转名
 steam根目录,dwmapi1.dll,file,Legacy,steam-inject-dlls,clear,
 steam根目录,dwmapi2.dll,file,Legacy,steam-inject-dlls,clear,
 steam根目录,dwmapi3.dll,file,Legacy,steam-inject-dlls,clear,
-steam根目录,hid.dll,file,Unialls;Steam-Run,steam-inject-dlls,clear,
+steam根目录,hid.dll,file,Unialls;Steam-Run,steam-inject-dlls,clear,2026-10-18 样本新增载荷，160504 B / SHA256 `9044ABC0...05CB308`；代理加载 `sdko.dll
 steam根目录,hid.log,file,Steam-Run,steam-inject-dlls,clear,
 steam根目录,hid.vdf,file,Legacy,steam-inject-dlls,clear,
 steam根目录,xinput1_4,file,SteamWork,steam-inject-dlls,clear,无扩展名
-steam根目录,xinput1_4.dll,file,Unialls;Steam-Run;SteamWork,steam-inject-dlls,clear,
+steam根目录,xinput1_4.dll,file,Unialls;Steam-Run;SteamWork,steam-inject-dlls,clear,2026-10-18 样本新增载荷，147456 B / SHA256 `5DA47C58...D0E85`；代理加载 `sdko.dll
 steam根目录,xinput1_4.dll.old,file,SteamWork,steam-inject-dlls,clear,原始 dll 备份
 steam根目录,xinput1_4.log,file,Steam-Run,steam-inject-dlls,clear,
 steam根目录,xinput1_42.dll,file,Legacy,steam-inject-dlls,clear,
@@ -34,9 +34,15 @@ steam根目录,package\beta,dir,SteamRun,steam-config-files,clear,我方动作�
 steam根目录,OpenSteamTool.dll,file,Unialls;OpenSteamTool,opensteamtool-root-files,clear,UNI 会主动删它
 steam根目录,opensteamtool.toml,file,OpenSteamTool,opensteamtool-root-files,clear,
 steam根目录,core.dll,file,Unialls,sample-47-100-121-251,clear,
-steam根目录,versions.dll,file,Unialls,sample-47-100-121-251,clear,
+steam根目录,versions.dll,file,Unialls,sample-47-100-121-251,clear,2026-10-18 样本 845824 B / SHA256 `4DBA8D74...BCE32F1`；Detours + CEF 调试链，带 `.vmp00` 节
 steam根目录,7z.dll,file,Unialls,sample-47-100-121-251,clear,
-steam根目录,cons,file,Unialls,sample-47-100-121-251,clear,从 47.100.121.251 下载
+steam根目录,cons,file,Unialls,sample-47-100-121-251,clear,从 47.100.121.251 下载；139 版内容为 `2.wanzi666.com` / `codxsy.kyeamu.cn` 两组 + `/keymanifest/` 地址
+steam根目录,sdko.dll,file,Unialls,unialls-sdko-loader,clear,2026-10-18 样本 3073024 B / SHA256 `2535794A...B68643`；Lua 5.4.2 假入库核心，VMProtect 段
+steam根目录,core.exe,file,Unialls,unialls-sdko-loader,clear,139 的 `$delFiles` 自带强删名单，说明是别变体残留
+steam根目录,bin\dwmapi.dll,file,Unialls,unialls-sdko-loader,clear,2026-10-18 样本 110592 B / SHA256 `7DC5E48B...F813C997`，与根目录副本同哈希
+steam根目录,bin\SdkoInjector.exe,file,Unialls,unialls-sdko-loader,clear,137728 B / SHA256 `0C6403DA...480EAE4`；`OpenProcess` / `VirtualAllocEx` / `WriteProcessMemory` / `CreateRemoteThread` 注入 `sdko.dll
+steam根目录,SdkoInjector.log,file,Unialls,unialls-sdko-loader,clear,注入器运行日志；同时检查 `${SteamPath}\SdkoInjector.log` 与 `${SteamPath}\bin\SdkoInjector.log
+steam根目录,.cef-enable-remote-debugging,file,Unialls;OpenSteamTool,unialls-sdko-loader,clear,内容 `1`，开 Steam CEF 远程调试（本机为 0 字节版）
 steam根目录,steamcdk.exe,file,Ruku,downloaded-steamcdk-exe,clear,
 steam根目录,steam-lucky.exe,file,Steam-Run,steam-extra-exes,clear,
 steam根目录,winhttp-log.txt,file,Steam-Run,fake-library-team-steam-root-artifacts,clear,
@@ -48,37 +54,39 @@ steam根目录,legit.zip,file,PowerShell2,fake-library-team-steam-root-artifacts
 steam根目录,legit64.dll,file,PowerShell2,fake-library-team-steam-root-artifacts,clear,
 steam根目录,legit197.vdf ~ legit218.vdf (×7),file,PowerShell2,fake-library-team-steam-root-artifacts,clear,
 steam根目录,SDL3_voder.dll,file,SteamCN,sdl3-voder-family,clear,本轮新增规则
-steam根目录,bin\diversion.dll,file,SteamCN-Rival,—,clear,缺口
-steam根目录,cdk.exe,file,SteamCN-Rival,—,clear,缺口
-steam根目录,dbghelp.dll,file,SteamCN-Rival,—,clear,缺口；误报低
-steam根目录,dinput8.dll,file,SteamCN-Rival,—,clear,缺口；部分游戏会投同名
-steam根目录,diversion.dll,file,SteamCN-Rival,—,clear,缺口
-steam根目录,emu.cfg,file,SteamCN-Rival,—,clear,缺口
-steam根目录,f1.exe,file,SteamCN-Rival,—,clear,缺口
-steam根目录,GameOverlayRenderer64.bak,file,SteamCN-Rival,—,clear,缺口
-steam根目录,local.vdf.bak,file,SteamCN-Rival,—,clear,缺口
-steam根目录,msimg32.dll,file,SteamCN-Rival,—,clear,缺口
-steam根目录,steamclient_loader.dll,file,SteamCN-Rival,—,clear,缺口
-steam根目录,steam_emu.ini,file,SteamCN-Rival,—,clear,缺口
-steam根目录,winmm.dll,file,SteamCN-Rival,—,clear,缺口
-steam根目录,xinput9_1_0.dll,file,SteamCN-Rival,—,clear,缺口
-steam根目录,Core,dir,SteamCN-Rival,—,clear,缺口；类型为推断
-steam根目录,CoreBeta,dir,SteamCN-Rival,—,clear,缺口；类型为推断
-steam根目录,diversion,dir,SteamCN-Rival,—,clear,缺口；类型为推断
-steam根目录,bin\diversion,dir,SteamCN-Rival,—,clear,缺口；类型为推断
+steam根目录,bin\diversion.dll,file,SteamCN-Rival,rival-residue-steam-root,clear,与 Valve 签名的 `bin\diversion64.dll` 区分，签名层兜底
+steam根目录,cdk.exe,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,dbghelp.dll,file,SteamCN-Rival,rival-residue-steam-root,clear,误报低
+steam根目录,dinput8.dll,file,SteamCN-Rival,rival-residue-steam-root,clear,本轮加入（老大授权：可疑即删，Steam 启动会重下）
+steam根目录,diversion.dll,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,emu.cfg,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,f1.exe,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,GameOverlayRenderer64.bak,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,local.vdf.bak,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,msimg32.dll,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,steamclient_loader.dll,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,steam_emu.ini,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,winmm.dll,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,xinput9_1_0.dll,file,SteamCN-Rival,rival-residue-steam-root,clear,
+steam根目录,Core,dir,SteamCN-Rival,rival-residue-steam-root,clear,类型为推断
+steam根目录,CoreBeta,dir,SteamCN-Rival,rival-residue-steam-root,clear,类型为推断
+steam根目录,diversion,dir,SteamCN-Rival,rival-residue-steam-root,clear,类型为推断
+steam根目录,bin\diversion,dir,SteamCN-Rival,rival-residue-steam-root,clear,类型为推断
 steam根目录,config\appdata.vdf,file,Steam-Run,steam-config-files,clear,
 steam根目录,config\config.vdf,file,Ruku;Steam-Run,—,manual,被改写 DisableShaderCache=1
 steam根目录,config\loginusers.vdf,file,Ruku;Steam-Run,—,manual,被改写 WantsOfflineMode=0
 steam根目录,config\lua,dir,OpenSteamTool;SteamCN,opensteamtool-lua-config,keep,老大指示暂不清除
-steam根目录,config\stplug-in,dir,SteamCN-Rival,—,keep,老大指示暂不清除
+steam根目录,config\stplug-in,dir,SteamCN-Rival,—,keep,老大指示暂不清除；与 `steamcn.cc` 自身创建的目录同路径，本轮未动
 steam根目录,appcache\appdata.vdf,file,Steam-Run,steam-config-files,clear,
 steam根目录,appcache\appdata64.vdf,file,Steam-Run,steam-config-files,clear,
 steam根目录,appcache\packageinfo.vdf,file,Steam-Run,steam-config-files,clear,
 steam根目录,"CefResource\locales\ff\{core,dwmapi,hid,xinput1_4}.dll",file,Legacy,steam-inject-dlls,clear,
 临时目录,%TEMP%\sdl3_setup,dir,SteamCN,defender-exclusions,clear,仅解除排除，文件本体未清
 临时目录,%TEMP%\res.zip,file,SteamRun,—,clear,缺口
-临时目录,%TEMP%\steams.zip,file,Unialls,—,clear,缺口；样本自删，失败会残留
+临时目录,C:\tmp\AppData\LocalLow\Unialls\Temp\Download\steams.zip,file,Unialls,sample-47-100-121-251;defender-exclusions,clear,精确路径；文件由父目录规则清除，Defender 排除项由 defender-exclusions 解除
 临时目录,%TEMP%\1.ps1,file,Ruku,temp-scripts,clear,
+临时目录,%TEMP%\csu_lz_<guid>.txt,file,SteamCN,—,clear,蓝奏 acw_sc__v2 cookie 临时文件，正常流程自删，失败会残留
+临时目录,%TEMP%\csu_install_<guid>.raw/.ps1,file,SteamCN,—,clear,脏会话自提权时落地的二段脚本，正常流程自删，失败会残留
 临时目录,%USERPROFILE%\get.ps1,file,Ruku,temp-scripts,clear,
 临时目录,<脚本目录>\a.ps1,file,Ruku,temp-scripts,clear,
 临时目录,C:\tmp\AppData\LocalLow\Unialls,dir,Unialls,sample-47-100-121-251,clear,含 Temp\Download
@@ -91,9 +99,9 @@ steam根目录,"CefResource\locales\ff\{core,dwmapi,hid,xinput1_4}.dll",file,Leg
 用户目录,%LOCALAPPDATA%\SteamKing,dir,Steam-Run,steamking-installed-app,clear,规则源头=本地 SteamKing-Setup-1.5.3.exe，无脚本样本
 用户目录,%ProgramFiles%\SteamKing,dir,Steam-Run,steamking-installed-app,clear,同上
 注册表,HKCU\Software\Valve\Steamtools (8 值 + 键),reg,Steam-Run;SteamRun,registry-steamtools,clear,packageinfo/steamclient/s/c/iscdkey/ActivateUnlockMode/AlwaysStayUnlocked/notUnlockDepot
-注册表,HKCU\Software\SteamTools,reg,SteamCN-Rival,—,clear,缺口
-注册表,HKLM\Software\SteamTools,reg,SteamCN-Rival,—,clear,缺口
-注册表,HKLM\Software\Valve\Steamtools,reg,SteamCN-Rival,—,clear,缺口；我方只有 HKCU
+注册表,HKCU\Software\SteamTools,reg,SteamCN-Rival,registry-steamtools,clear,
+注册表,HKLM\Software\SteamTools,reg,SteamCN-Rival,registry-steamtools,clear,
+注册表,HKLM\Software\Valve\Steamtools,reg,SteamCN-Rival,registry-steamtools,clear,本轮补齐 HKLM 侧
 注册表,HKCU\Software\Valve\Steam\AutoLoginUser,regvalue,Steam-Run;SteamCN,—,clear,缺口
 注册表,"HKCU\Software\Valve\Steam\Apps\{3545990,2050650,3218580}\manifests",regvalue,Steam-Run,steam-apps-manifest-registry,clear,
 注册表,HKLM\SYSTEM\...\Control\CI\Policy\VerifiedAndReputablePolicyState,regvalue,Ruku,smartscreen-ci-policy-registry,clear,
@@ -111,6 +119,7 @@ steam根目录,"CefResource\locales\ff\{core,dwmapi,hid,xinput1_4}.dll",file,Leg
 系统层,计划任务 (含 %APPDATA%\Stool 路径),task,Steam-Run,stool-scheduled-tasks,clear,
 系统层,进程 steam_auth,process,Steam-Run,process-steam-auth,clear,同上，只见 Ruku 清理；产出方未取证
 系统层,进程 SteamKing,process,Steam-Run,steamking-installed-app,clear,
+系统层,Set-ProcessMitigation -Name steam.exe -Disable PreferSystem32,setting,Unialls,—,manual,关掉 PreferSystem32 后 Steam 目录 DLL 优先于 system32 加载，注入才生效；无自动还原机制
 网络IOC,47.100.121.251 / 47.98.148.132,ioc,Unialls,—,n/a,下载站（steams.zip / cons）
 网络IOC,vfc88.cn / ss.vfc77.cn / x.vfc77.cn,ioc,Unialls,—,n/a,
 网络IOC,steam-run.com / steamcdkey.cn,ioc,Steam-Run,历史线索关键词,n/a,已入规则关键词
@@ -119,5 +128,8 @@ steam根目录,"CefResource\locales\ff\{core,dwmapi,hid,xinput1_4}.dll",file,Leg
 网络IOC,steam.work / steam.icu,ioc,SteamWork,历史线索关键词,n/a,
 网络IOC,steamfn.com / steamox.com,ioc,SteamRun,历史线索关键词,n/a,steamox.com 侧只有自用抓页脚本，非样本
 网络IOC,steamcn.cc,ioc,SteamCN,历史线索关键词,n/a,本轮新增
+网络IOC,steamcc.cn,ioc,SteamCN,历史线索关键词,n/a,与 steamcn.cc 同族轮换镜像；2026-09-30 查无 A 记录
+网络IOC,139.196.146.200 /keymanifest/` + `2.wanzi666.com` / `codxsy.kyeamu.cn,ioc,Unialls,历史线索关键词,n/a,139 版 cons 的清单源；`/keymanifest/` 无参数直接访问 403
+网络IOC,stats.opensteamtool.com,ioc,Unialls,历史线索关键词,n/a,sdko.dll` 内嵌的 OpenSteamTool 统计域名
 网络IOC,gitee.com/huooee887,ioc,Steam-Run,—,n/a,legit/legit64 托管
 网络IOC,rescue-steam.muqiuxm.com.cn,ioc,Steam-Run,—,n/a,hosts 劫持目标

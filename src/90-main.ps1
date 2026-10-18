@@ -38,8 +38,21 @@ $rules = @($targets.rules) | Where-Object {
 $detectedItems = @()
 $protectedItems = @()
 
-$scanTotal = [Math]::Max(1, @($rules).Count)
+$scanIdentities = New-Object System.Collections.Generic.List[string]
+$scanIdentitySet = @{}
+foreach ($rule in $rules) {
+    foreach ($action in @($rule.actions)) {
+        $identity = Get-ActionIdentity -Action $action -Variables $variables
+        if (-not $scanIdentitySet.ContainsKey($identity)) {
+            $scanIdentitySet[$identity] = $true
+            $scanIdentities.Add($identity)
+        }
+    }
+}
+
+$scanTotal = [Math]::Max(1, $scanIdentities.Count)
 $scanCurrent = 0
+$scanResultCache = @{}
 Write-Section '🖥️ 本机信息'
 Write-KeyValue '操作系统' $variables.OS
 if ($variables.SteamPath) {
@@ -63,13 +76,28 @@ foreach ($rule in $rules) {
         actions = @()
     }
 
-    $detectedActions = @()
     foreach ($action in @($rule.actions)) {
         $label = Format-ActionLabel -Action $action -Variables $variables
-        $exists = Test-ActionExists -Action $action -Variables $variables
-        if ($exists) {
-            $report.summary.detected++
-            $detectedActions += $action
+        $identity = Get-ActionIdentity -Action $action -Variables $variables
+        if ($scanResultCache.ContainsKey($identity)) {
+            $cachedResult = $scanResultCache[$identity]
+            $exists = [bool]$cachedResult.Exists
+            $protected = [bool]$cachedResult.Protected
+        }
+        else {
+            $exists = Test-ActionExists -Action $action -Variables $variables
+            $protected = $exists -and (Test-ProtectedOfficialFile -Action $action -Variables $variables)
+            $scanResultCache[$identity] = [pscustomobject]@{
+                Exists    = [bool]$exists
+                Protected = [bool]$protected
+            }
+            $scanCurrent++
+            if ($scanCurrent -lt $scanTotal) {
+                Write-ProgressLine -Current $scanCurrent -Total $scanTotal -Status '扫描中'
+            }
+        }
+
+        if ($exists -and -not $protected) {
             $detectedItems += [pscustomobject]@{
                 RuleId = $rule.id
                 RuleTitle = $rule.title
@@ -80,7 +108,7 @@ foreach ($rule in $rules) {
                 Category = (Get-ActionCategory -Action $action)
             }
         }
-        elseif (Test-ProtectedOfficialFile -Action $action -Variables $variables) {
+        elseif ($protected) {
             $protectedItems += [pscustomobject]@{
                 RuleId = $rule.id
                 RuleTitle = $rule.title
@@ -96,20 +124,35 @@ foreach ($rule in $rules) {
     }
 
     $report.targets += $ruleReport
-    $scanCurrent++
-    if ($scanCurrent -lt $scanTotal) {
-        Write-ProgressLine -Current $scanCurrent -Total $scanTotal -Status '扫描中'
-    }
 }
 
 Write-ProgressLine -Current $scanTotal -Total $scanTotal -Status '扫描完成'
 
+# Overlapping rules can resolve to the same physical target. Show and remove it once.
+$uniqueItems = @()
+$itemIndex = @{}
+foreach ($item in $detectedItems) {
+    $key = Get-ActionIdentity -Action $item.Action -Variables $variables
+    if ($itemIndex.ContainsKey($key)) {
+        $existing = $itemIndex[$key]
+        if ($item.Action.recurse -eq $true) {
+            $existing.Action | Add-Member -NotePropertyName recurse -NotePropertyValue $true -Force
+        }
+        continue
+    }
+    $itemIndex[$key] = $item
+    $uniqueItems += $item
+}
+$detectedItems = @($uniqueItems)
+$report.summary.detected = $detectedItems.Count
+
 if ($detectedItems.Count -eq 0) {
     Write-Result '✓' '安全' '未发现需要清理的项目。' Success
     Write-KeyValue '已扫描到' '0 项' Success
+    Write-ProtectedItems -Items $protectedItems
 }
 else {
-    $categoryOrder = @('exe', 'dll', 'steam-config', 'registry', 'startup', 'security', 'process', 'file', 'other')
+    $categoryOrder = @('files', 'config', 'registry', 'startup', 'security', 'process', 'other')
     foreach ($category in $categoryOrder) {
         $items = @($detectedItems | Where-Object { $_.Category -eq $category })
         if ($items.Count -eq 0) { continue }
@@ -118,24 +161,14 @@ else {
         $index = 1
         foreach ($item in $items) {
             Write-Status ('    {0,2}. ' -f $index) Muted -NoNewline
-            Write-Status $item.RuleTitle Danger -NoNewline
-            Write-Status '  ·  ' Dim -NoNewline
-            Write-Status $item.Action.type Muted
-            Write-Status ("        {0}" -f $item.Label) Path
+            Write-Status $item.Label Path
             $index++
         }
         Write-Blank
     }
     Write-KeyValue '已扫描到' ($detectedItems.Count.ToString() + ' 项') Danger
 
-    if (@($protectedItems).Count -gt 0) {
-        Write-Blank
-        Write-Status ('  🛡️ 官方文件保护：{0} 项 Valve 数字签名文件已自动跳过（Steam 官方组件，不清理）' -f @($protectedItems).Count) Success
-        foreach ($p in @($protectedItems) | Select-Object -Unique -Property Label) {
-            Write-Status ('        · ' + $p.Label) Muted
-        }
-        Write-Blank
-    }
+    Write-ProtectedItems -Items $protectedItems
 
     Write-Section '⚠️ 注意事项'
     Write-Status '    1. 此工具不影响游戏、存档、创意工坊、MOD，请放心使用~' WarningSoft

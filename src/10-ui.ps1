@@ -73,11 +73,12 @@ function Write-Status {
         return
     }
 
-    $fallback = 'Gray'
-    if ([enum]::TryParse([ConsoleColor], [string]$Color, $true, [ref]$fallback)) {
+    $fallback = [ConsoleColor]::Gray
+    try {
+        $fallback = [ConsoleColor]([string]$Color)
         Write-Host $Message -ForegroundColor $fallback -NoNewline:$NoNewline
     }
-    else {
+    catch {
         Write-Host $Message -NoNewline:$NoNewline
     }
 }
@@ -212,6 +213,19 @@ function Write-Result {
     Write-Status $Text $Color
 }
 
+function Write-ProtectedItems {
+    param($Items)
+
+    if (@($Items).Count -eq 0) { return }
+
+    Write-Blank
+    Write-Status ('  🛡️ 官方文件保护：{0} 项 Valve 数字签名文件已自动跳过（Steam 官方组件，不清理）' -f @($Items).Count) Success
+    foreach ($item in @($Items) | Select-Object -Unique -Property Label) {
+        Write-Status ('        · ' + $item.Label) Muted
+    }
+    Write-Blank
+}
+
 function Get-RiskText {
     param([string]$Risk)
     switch ($Risk) {
@@ -236,8 +250,8 @@ function Read-CleanupConfirmation {
     Write-Blank
     Write-Section '✅ 确认清理？'
     Write-Status '  输入 Y 并回车 = 确认清理      |  其他任何输入 = 取消' Muted
-    $choice = Read-Host '  请选择'
-    if ($choice.Trim().ToUpperInvariant() -eq 'Y') {
+    $choice = [string](Read-Host '  请选择')
+    if ($choice -and $choice.Trim().ToUpperInvariant() -eq 'Y') {
         Write-Status '确认清理' Accent
         return $true
     }

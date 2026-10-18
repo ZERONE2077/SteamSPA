@@ -9,10 +9,20 @@ $versionPath=Join-Path $root 'data\version.json'
 if(-not(Test-Path -LiteralPath $dataPath)){throw "Missing rule database: $dataPath"}
 if(-not(Test-Path -LiteralPath $versionPath)){throw "Missing version file: $versionPath"}
 $rules=Get-Content -LiteralPath $dataPath -Raw -Encoding UTF8|ConvertFrom-Json
-$version=Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8|ConvertFrom-Json
+$versionText=Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8
+$version=$versionText|ConvertFrom-Json
 if([string]::IsNullOrWhiteSpace([string]$version.version)){throw 'version.json: missing version'}
 if([string]::IsNullOrWhiteSpace([string]$version.updatedAt)){throw 'version.json: missing updatedAt'}
 if(-not $rules.rules -or @($rules.rules).Count -eq 0){throw 'Rule database contains no rules.'}
+if(-not $Check){
+  $today=(Get-Date).ToString('yyyy-MM-dd')
+  if([string]$version.updatedAt -ne $today){
+    $updatedVersionText=[regex]::Replace($versionText,'("updatedAt"\s*:\s*")[^"]*(")','${1}'+$today+'${2}')
+    if($updatedVersionText -eq $versionText){throw 'version.json: missing updatedAt'}
+    [IO.File]::WriteAllText($versionPath,$updatedVersionText,(New-Object System.Text.UTF8Encoding($false)))
+    $version.updatedAt=$today
+  }
+}
 $sourceFiles=@('src\00-bootstrap.ps1','src\10-ui.ps1','src\20-environment.ps1','src\30-detection.ps1','src\40-cleanup.ps1','src\60-history.ps1','src\90-main.ps1')
 foreach($file in $sourceFiles){if(-not(Test-Path -LiteralPath(Join-Path $root $file))){throw "Missing source file: $file"}}
 $nl=[Environment]::NewLine
@@ -25,7 +35,8 @@ $content=$bootstrap.TrimEnd()+$nl+$nl+$metadata+$nl+$nl
 $content+='# Embedded rule database. Source of truth: data/rules.json'+$nl
 $content+='$EmbeddedTargetsJson = @'''+$nl+$rulesText.TrimEnd()+$nl+"'@"+$nl+$nl
 $content+=$modules.Trim()+$nl+$nl+'# Application entry point'+$nl+$main.Trim()+$nl
-$utf8=New-Object System.Text.UTF8Encoding($false)
+# Windows PowerShell 5.1 reads BOM-less scripts as the active ANSI code page.
+$utf8=New-Object System.Text.UTF8Encoding($true)
 if($Check){
   if(-not(Test-Path -LiteralPath $OutputPath)){Write-Error 'uninstall.ps1 is missing';exit 1}
   $existing=[IO.File]::ReadAllText($OutputPath,$utf8)

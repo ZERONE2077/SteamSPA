@@ -1,10 +1,11 @@
-<#
+﻿<#
 .SYNOPSIS
     SteamSPA clean engine.
 .DESCRIPTION
     Scans SteamSPA leftovers first, then asks for confirmation before cleanup.
 #>
-# NOTE: Chinese UI text is kept as plain UTF-8 for easy editing. Save this file as UTF-8 without BOM.
+# NOTE: Chinese UI text is kept as UTF-8. The generated uninstall.ps1 uses a BOM
+# so Windows PowerShell 5.1 reads it correctly on non-UTF-8 Windows code pages.
 Clear-Host
 $host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具'
 $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -59,8 +60,8 @@ if (-not (Test-Path -LiteralPath $scriptRoot)) {
     New-Item -ItemType Directory -Path $scriptRoot -Force | Out-Null
 }
 
-$SteamSPAReleaseVersion = '3.1'
-$SteamSPAUpdatedAt = '2026-09-18'
+$SteamSPAReleaseVersion = '3.2'
+$SteamSPAUpdatedAt = '2026-10-18'
 
 # Embedded rule database. Source of truth: data/rules.json
 $EmbeddedTargetsJson = @'
@@ -85,7 +86,9 @@ $EmbeddedTargetsJson = @'
                 "research/samples/steam.run/steam.run.001.ps1",
                 "research/samples/steam.run/steam.run.002.ps1",
                 "research/samples/steam.work/steam.icu.001.ps1",
-                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
+                "research/samples/steam-run.com/steamcdkey.cn.001.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -223,7 +226,9 @@ $EmbeddedTargetsJson = @'
                 "research/samples/47.100.121.251/47.100.121.251.ps1",
                 "research/samples/47.98.148.132/47.98.148.132.ps1",
                 "research/samples/vfc88.cn/vfc88.cn.001.ps1",
-                "research/samples/vfc88.cn/ss.vfc77.cn.001.ps1"
+                "research/samples/vfc88.cn/ss.vfc77.cn.001.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -283,6 +288,47 @@ $EmbeddedTargetsJson = @'
             ]
         },
         {
+            "id": "unialls-sdko-loader",
+            "title": "Unialls sdko 假入库加载器 (需确认)",
+            "sources": [
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\sdko.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\core.exe"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\dwmapi.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\SdkoInjector.exe"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\.cef-enable-remote-debugging"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\SdkoInjector.log"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\SdkoInjector.log"
+                }
+            ]
+        },
+        {
             "id": "steam-config-files",
             "title": "STEAM 配置文件 / Beta 标志 / appdata 缓存",
             "sources": [
@@ -291,7 +337,9 @@ $EmbeddedTargetsJson = @'
                 "research/samples/steam-run.com/steam-run.com.002.ps1",
                 "research/samples/steam-run.com/steam-run.com.003.ps1",
                 "research/samples/steam-run.com/steam-run.com.004.ps1",
-                "research/samples/steam.work/steam.icu.001.ps1"
+                "research/samples/steam.work/steam.icu.001.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -336,7 +384,7 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "registry-steamtools",
-            "title": "注册表 HKCU\\Software\\Valve\\Steamtools",
+            "title": "注册表 Steamtools / SteamTools 键 (HKCU + HKLM)",
             "sources": [
                 "research/samples/steam-run.com/142785900.001.ps1",
                 "research/samples/steam-run.com/steam-run.com.001.ps1",
@@ -345,7 +393,8 @@ $EmbeddedTargetsJson = @'
                 "research/samples/steam-run.com/steam-run.com.004.ps1",
                 "research/samples/steam.run/cdks.run.001.ps1",
                 "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1"
+                "research/samples/steam.run/steam.run.002.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -393,6 +442,21 @@ $EmbeddedTargetsJson = @'
                 {
                     "type": "registry-key",
                     "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKCU:\\Software\\SteamTools",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKLM:\\Software\\SteamTools",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKLM:\\Software\\Valve\\Steamtools",
                     "recurse": true
                 }
             ]
@@ -458,7 +522,9 @@ $EmbeddedTargetsJson = @'
             "sources": [
                 "research/samples/steam.run/cdks.run.001.ps1",
                 "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1"
+                "research/samples/steam.run/steam.run.002.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "medium",
@@ -517,7 +583,10 @@ $EmbeddedTargetsJson = @'
                 "research/samples/steam.run/steam.run.001.ps1",
                 "research/samples/steam.run/steam.run.002.ps1",
                 "research/samples/steam-run.com/steamcdkey.cn.001.ps1",
-                "research/samples/steamcn.cc/steamcn.cc.001.ps1"
+                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -590,6 +659,14 @@ $EmbeddedTargetsJson = @'
                 {
                     "type": "defender-exclusion-process",
                     "name": "curl.exe"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\sdko.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "C:\\tmp\\AppData\\LocalLow\\Unialls\\Temp\\Download\\steams.zip"
                 }
             ]
         },
@@ -692,7 +769,9 @@ $EmbeddedTargetsJson = @'
             "id": "opensteamtool-root-files",
             "title": "OpenSteamTool 根目录文件",
             "sources": [
-                "https://github.com/OpenSteam001/OpenSteamTool"
+                "https://github.com/OpenSteam001/OpenSteamTool",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -719,7 +798,8 @@ $EmbeddedTargetsJson = @'
             "id": "opensteamtool-lua-config",
             "title": "OpenSteamTool Lua 配置目录 (需确认，默认禁用)",
             "sources": [
-                "https://github.com/OpenSteam001/OpenSteamTool"
+                "https://github.com/OpenSteam001/OpenSteamTool",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
             ],
             "enabled": false,
             "risk": "medium",
@@ -776,6 +856,110 @@ $EmbeddedTargetsJson = @'
                 {
                     "type": "file",
                     "path": "${SteamPath}\\steam-lucky.exe"
+                }
+            ]
+        },
+        {
+            "id": "rival-residue-steam-root",
+            "title": "竞品残留：假入库竞品 DLL / 目录 (需确认)",
+            "sources": [
+                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\diversion.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\winmm.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\steamclient_loader.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\GameOverlayRenderer64.bak"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput9_1_0.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\msimg32.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dbghelp.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\Core",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\CoreBeta",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\diversion",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\diversion.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\diversion",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\cdk.exe"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\f1.exe"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\steam_emu.ini"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\emu.cfg"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\local.vdf.bak"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\config\\stUI",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\config\\steamunlocked",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\config\\greenluma",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dinput8.dll"
                 }
             ]
         },
@@ -928,7 +1112,8 @@ $EmbeddedTargetsJson = @'
             "id": "sdl3-voder-family",
             "title": "SDL3_voder 假入库家族残留 (steamcn.cc)",
             "sources": [
-                "research/samples/steamcn.cc/steamcn.cc.001.ps1"
+                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -1043,11 +1228,12 @@ function Write-Status {
         return
     }
 
-    $fallback = 'Gray'
-    if ([enum]::TryParse([ConsoleColor], [string]$Color, $true, [ref]$fallback)) {
+    $fallback = [ConsoleColor]::Gray
+    try {
+        $fallback = [ConsoleColor]([string]$Color)
         Write-Host $Message -ForegroundColor $fallback -NoNewline:$NoNewline
     }
-    else {
+    catch {
         Write-Host $Message -NoNewline:$NoNewline
     }
 }
@@ -1182,6 +1368,19 @@ function Write-Result {
     Write-Status $Text $Color
 }
 
+function Write-ProtectedItems {
+    param($Items)
+
+    if (@($Items).Count -eq 0) { return }
+
+    Write-Blank
+    Write-Status ('  🛡️ 官方文件保护：{0} 项 Valve 数字签名文件已自动跳过（Steam 官方组件，不清理）' -f @($Items).Count) Success
+    foreach ($item in @($Items) | Select-Object -Unique -Property Label) {
+        Write-Status ('        · ' + $item.Label) Muted
+    }
+    Write-Blank
+}
+
 function Get-RiskText {
     param([string]$Risk)
     switch ($Risk) {
@@ -1206,8 +1405,8 @@ function Read-CleanupConfirmation {
     Write-Blank
     Write-Section '✅ 确认清理？'
     Write-Status '  输入 Y 并回车 = 确认清理      |  其他任何输入 = 取消' Muted
-    $choice = Read-Host '  请选择'
-    if ($choice.Trim().ToUpperInvariant() -eq 'Y') {
+    $choice = [string](Read-Host '  请选择')
+    if ($choice -and $choice.Trim().ToUpperInvariant() -eq 'Y') {
         Write-Status '确认清理' Accent
         return $true
     }
@@ -1413,6 +1612,145 @@ function Normalize-DefenderPath {
     return $normalized.TrimEnd('\', '/') -replace '/', '\'
 }
 
+function New-ScheduledTaskSnapshotItem {
+    param(
+        [string]$Name,
+        [string]$Path,
+        $Actions
+    )
+
+    $actionItems = @()
+    foreach ($action in @($Actions)) {
+        $actionItems += [pscustomobject]@{
+            Execute   = [string]$action.Execute
+            Arguments = [string]$action.Arguments
+        }
+    }
+
+    return [pscustomobject]@{
+        Name     = $Name
+        Path     = $Path
+        TaskName = $Name
+        TaskPath = $Path
+        Actions  = @($actionItems)
+    }
+}
+
+function ConvertTo-ScheduledTaskFolderPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return '\'
+    }
+
+    $trimmed = $Path.Trim()
+    if ($trimmed -eq '\') {
+        return '\'
+    }
+
+    # COM returns the full task path; Get-ScheduledTask returns the folder path.
+    $parent = Split-Path -Parent $trimmed
+    if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq '\') {
+        return '\'
+    }
+
+    return $parent.TrimEnd('\') + '\'
+}
+
+function Add-ScheduledTaskFolderSnapshot {
+    param($Folder, $Items)
+
+    foreach ($task in @($Folder.GetTasks(1))) {
+        try {
+            $definition = $task.Definition
+            $taskFolderPath = ConvertTo-ScheduledTaskFolderPath -Path ([string]$task.Path)
+            $taskItem = New-ScheduledTaskSnapshotItem -Name ([string]$task.Name) -Path $taskFolderPath -Actions $definition.Actions
+            $Items.Add($taskItem)
+        }
+        catch {
+        }
+    }
+
+    foreach ($child in @($Folder.GetFolders(1))) {
+        try {
+            Add-ScheduledTaskFolderSnapshot -Folder $child -Items $Items
+        }
+        catch {
+        }
+    }
+}
+
+function Get-ScheduledTaskSnapshot {
+    param([switch]$Refresh)
+
+    if (-not $Refresh -and $script:ScheduledTaskSnapshotLoaded) {
+        return @($script:ScheduledTaskSnapshot)
+    }
+
+    $items = New-Object System.Collections.Generic.List[object]
+    $loadedFromCom = $false
+
+    try {
+        $service = New-Object -ComObject Schedule.Service
+        $service.Connect()
+        $rootFolder = $service.GetFolder('\')
+        Add-ScheduledTaskFolderSnapshot -Folder $rootFolder -Items $items
+        $loadedFromCom = $true
+    }
+    catch {
+        $loadedFromCom = $false
+    }
+
+    if (-not $loadedFromCom -and (Get-Command -Name Get-ScheduledTask -ErrorAction SilentlyContinue)) {
+        foreach ($task in @(Get-ScheduledTask -ErrorAction SilentlyContinue)) {
+            $taskName = [string]$task.TaskName
+            if ([string]::IsNullOrWhiteSpace($taskName)) {
+                $taskName = [string]$task.Name
+            }
+            $taskPath = [string]$task.TaskPath
+            if ([string]::IsNullOrWhiteSpace($taskPath)) {
+                $taskPath = [string]$task.Path
+            }
+            $taskFolderPath = ConvertTo-ScheduledTaskFolderPath -Path $taskPath
+            $items.Add((New-ScheduledTaskSnapshotItem -Name $taskName -Path $taskFolderPath -Actions $task.Actions))
+        }
+    }
+
+    $script:ScheduledTaskSnapshot = $items.ToArray()
+    $script:ScheduledTaskSnapshotLoaded = $true
+    return $script:ScheduledTaskSnapshot
+}
+
+function Find-ScheduledTasksByContains {
+    param([string]$Needle)
+
+    if ([string]::IsNullOrWhiteSpace($Needle)) {
+        return @()
+    }
+
+    return @(Get-ScheduledTaskSnapshot | Where-Object {
+        $task = $_
+        @($task.Actions) | Where-Object {
+            $expandedExecute = [Environment]::ExpandEnvironmentVariables([string]$_.Execute)
+            $expandedArguments = [Environment]::ExpandEnvironmentVariables([string]$_.Arguments)
+            ($expandedExecute -like "*$Needle*") -or
+            ($expandedArguments -like "*$Needle*")
+        }
+    })
+}
+
+function Test-ScheduledTaskExists {
+    param([string]$Name)
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        return $false
+    }
+
+    return @(Get-ScheduledTaskSnapshot | Where-Object {
+        [string]$_.Name -eq $Name
+    }).Count -gt 0
+}
+
 function Test-ActionExists {
     param($Action, [hashtable]$Variables)
 
@@ -1420,7 +1758,6 @@ function Test-ActionExists {
         'file' {
             $path = Resolve-Template -Text $Action.path -Variables $Variables
             if (-not (Test-Path -LiteralPath $path)) { return $false }
-            if (Test-ValveSignedFile -Path $path) { return $false }
             return $true
         }
         'registry-key' {
@@ -1457,17 +1794,11 @@ function Test-ActionExists {
             return $null -ne (Get-Service -Name $Action.name -ErrorAction SilentlyContinue)
         }
         'task' {
-            return $null -ne (Get-ScheduledTask -TaskName $Action.name -ErrorAction SilentlyContinue)
+            return (Test-ScheduledTaskExists -Name $Action.name)
         }
         'task-contains' {
             $needle = Resolve-Template -Text $Action.contains -Variables $Variables
-            $matches = Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object {
-                $task = $_
-                @($task.Actions) | Where-Object {
-                    ([string]$_.Execute -like "*$needle*") -or ([string]$_.Arguments -like "*$needle*")
-                }
-            }
-            return $null -ne (@($matches)[0])
+            return (@(Find-ScheduledTasksByContains -Needle $needle).Count -gt 0)
         }
         default {
             return $false
@@ -1571,20 +1902,19 @@ function Remove-Action {
         }
         'task' {
             Unregister-ScheduledTask -TaskName $Action.name -Confirm:$false
+            Get-ScheduledTaskSnapshot -Refresh | Out-Null
             return 'removed'
         }
         'task-contains' {
             $needle = Resolve-Template -Text $Action.contains -Variables $Variables
-            $matches = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object {
-                $task = $_
-                @($task.Actions) | Where-Object {
-                    ([string]$_.Execute -like "*$needle*") -or ([string]$_.Arguments -like "*$needle*")
-                }
-            })
+            $matches = @(Find-ScheduledTasksByContains -Needle $needle)
             foreach ($task in $matches) {
-                Unregister-ScheduledTask -TaskName $task.TaskName -TaskPath $task.TaskPath -Confirm:$false
+                Unregister-ScheduledTask -TaskName $task.Name -TaskPath $task.Path -Confirm:$false
             }
-            if ($matches.Count -gt 0) { return 'removed' }
+            if ($matches.Count -gt 0) {
+                Get-ScheduledTaskSnapshot -Refresh | Out-Null
+                return 'removed'
+            }
             return 'skipped'
         }
         default {
@@ -1602,15 +1932,14 @@ function Format-ActionLabel {
         'registry-value' { return "$($Action.path)\$($Action.name)" }
         'defender-exclusion-path' {
             $path = Resolve-Template -Text $Action.path -Variables $Variables
-            $kind = if (Test-Path -LiteralPath $path -PathType Container) { 'Folder' } elseif (Test-Path -LiteralPath $path -PathType Leaf) { 'File' } else { 'Path' }
-            return "Defender ${kind}: $path"
+            return $path
         }
-        'defender-exclusion-extension' { return "Defender Extension: $($Action.name)" }
-        'defender-exclusion-process' { return "Defender Process: $($Action.name)" }
-        'process' { return "Process: $($Action.name)" }
-        'service' { return "Service: $($Action.name)" }
-        'task' { return "Task: $($Action.name)" }
-        'task-contains' { return "Task contains: $(Resolve-Template -Text $Action.contains -Variables $Variables)" }
+        'defender-exclusion-extension' { return "扩展名: $($Action.name)" }
+        'defender-exclusion-process' { return "排除进程: $($Action.name)" }
+        'process' { return "进程: $($Action.name)" }
+        'service' { return "服务: $($Action.name)" }
+        'task' { return "计划任务: $($Action.name)" }
+        'task-contains' { return "计划任务包含: $(Resolve-Template -Text $Action.contains -Variables $Variables)" }
         default { return $Action.type }
     }
 }
@@ -1621,10 +1950,8 @@ function Get-ActionCategory {
     switch ($Action.type) {
         'file' {
             $p = [string]$Action.path
-            if ($p -match '\\.exe($|\\.)') { return 'exe' }
-            if ($p -match '\\.dll($|\\.)') { return 'dll' }
-            if ($p -match 'steam\.cfg|appdata\.vdf|packageinfo\.vdf|localData\.vdf|package\\\\beta|opensteamtool\.toml|config\\\\lua') { return 'steam-config' }
-            return 'file'
+            if ($p -match 'steam\.cfg|appdata\d*\.vdf|packageinfo\.vdf|localData\.vdf|package\\beta|opensteamtool\.toml|config\\lua') { return 'config' }
+            return 'files'
         }
         'registry-key' { return 'registry' }
         'registry-value' { return 'registry' }
@@ -1639,18 +1966,24 @@ function Get-ActionCategory {
     }
 }
 
+function Get-ActionIdentity {
+    param($Action, [hashtable]$Variables)
+
+    $target = [string](Format-ActionLabel -Action $Action -Variables $Variables)
+    $target = $target.Trim().TrimEnd('\', '/')
+    return ([string]$Action.type).ToLowerInvariant() + '|' + $target.ToLowerInvariant()
+}
+
 function Get-CategoryTitle {
     param([string]$Category)
 
     switch ($Category) {
-        'exe' { return '可执行文件' }
-        'dll' { return '注入 DLL' }
-        'steam-config' { return 'STEAM 配置项' }
+        'files' { return '文件' }
+        'config' { return '配置' }
         'registry' { return '注册表' }
-        'startup' { return '启动项 / 服务 / 计划任务' }
-        'security' { return '安全排除项 / 系统策略' }
-        'process' { return '后台驻留进程' }
-        'file' { return '文件 / 目录残留' }
+        'startup' { return '启动项' }
+        'security' { return '安全项' }
+        'process' { return '进程' }
         default { return '其他' }
     }
 }
@@ -1693,12 +2026,22 @@ function Get-FakeLibraryHistoryClues {
         'ruku.run',
         'steamcdkey.cn',
         'steamcn.cc',
+        'steamcc.cn',
         'SDL3_voder',
         'sdl3_setup',
         'csu_install',
+        'csu_lz_',
+        'CSU_DIVA_HOST',
         'vfc88.cn',
         'vfc77.cn',
         '121.41.99.14',
+        '139.196.146.200',
+        'wanzi666',
+        'kyeamu',
+        'keymanifest',
+        'sdko',
+        'SdkoInjector',
+        'stats.opensteamtool.com',
         'siyecao',
         'tfdl.net',
         'steamcdk',
@@ -1834,8 +2177,21 @@ $rules = @($targets.rules) | Where-Object {
 $detectedItems = @()
 $protectedItems = @()
 
-$scanTotal = [Math]::Max(1, @($rules).Count)
+$scanIdentities = New-Object System.Collections.Generic.List[string]
+$scanIdentitySet = @{}
+foreach ($rule in $rules) {
+    foreach ($action in @($rule.actions)) {
+        $identity = Get-ActionIdentity -Action $action -Variables $variables
+        if (-not $scanIdentitySet.ContainsKey($identity)) {
+            $scanIdentitySet[$identity] = $true
+            $scanIdentities.Add($identity)
+        }
+    }
+}
+
+$scanTotal = [Math]::Max(1, $scanIdentities.Count)
 $scanCurrent = 0
+$scanResultCache = @{}
 Write-Section '🖥️ 本机信息'
 Write-KeyValue '操作系统' $variables.OS
 if ($variables.SteamPath) {
@@ -1859,13 +2215,28 @@ foreach ($rule in $rules) {
         actions = @()
     }
 
-    $detectedActions = @()
     foreach ($action in @($rule.actions)) {
         $label = Format-ActionLabel -Action $action -Variables $variables
-        $exists = Test-ActionExists -Action $action -Variables $variables
-        if ($exists) {
-            $report.summary.detected++
-            $detectedActions += $action
+        $identity = Get-ActionIdentity -Action $action -Variables $variables
+        if ($scanResultCache.ContainsKey($identity)) {
+            $cachedResult = $scanResultCache[$identity]
+            $exists = [bool]$cachedResult.Exists
+            $protected = [bool]$cachedResult.Protected
+        }
+        else {
+            $exists = Test-ActionExists -Action $action -Variables $variables
+            $protected = $exists -and (Test-ProtectedOfficialFile -Action $action -Variables $variables)
+            $scanResultCache[$identity] = [pscustomobject]@{
+                Exists    = [bool]$exists
+                Protected = [bool]$protected
+            }
+            $scanCurrent++
+            if ($scanCurrent -lt $scanTotal) {
+                Write-ProgressLine -Current $scanCurrent -Total $scanTotal -Status '扫描中'
+            }
+        }
+
+        if ($exists -and -not $protected) {
             $detectedItems += [pscustomobject]@{
                 RuleId = $rule.id
                 RuleTitle = $rule.title
@@ -1876,7 +2247,7 @@ foreach ($rule in $rules) {
                 Category = (Get-ActionCategory -Action $action)
             }
         }
-        elseif (Test-ProtectedOfficialFile -Action $action -Variables $variables) {
+        elseif ($protected) {
             $protectedItems += [pscustomobject]@{
                 RuleId = $rule.id
                 RuleTitle = $rule.title
@@ -1892,20 +2263,35 @@ foreach ($rule in $rules) {
     }
 
     $report.targets += $ruleReport
-    $scanCurrent++
-    if ($scanCurrent -lt $scanTotal) {
-        Write-ProgressLine -Current $scanCurrent -Total $scanTotal -Status '扫描中'
-    }
 }
 
 Write-ProgressLine -Current $scanTotal -Total $scanTotal -Status '扫描完成'
 
+# Overlapping rules can resolve to the same physical target. Show and remove it once.
+$uniqueItems = @()
+$itemIndex = @{}
+foreach ($item in $detectedItems) {
+    $key = Get-ActionIdentity -Action $item.Action -Variables $variables
+    if ($itemIndex.ContainsKey($key)) {
+        $existing = $itemIndex[$key]
+        if ($item.Action.recurse -eq $true) {
+            $existing.Action | Add-Member -NotePropertyName recurse -NotePropertyValue $true -Force
+        }
+        continue
+    }
+    $itemIndex[$key] = $item
+    $uniqueItems += $item
+}
+$detectedItems = @($uniqueItems)
+$report.summary.detected = $detectedItems.Count
+
 if ($detectedItems.Count -eq 0) {
     Write-Result '✓' '安全' '未发现需要清理的项目。' Success
     Write-KeyValue '已扫描到' '0 项' Success
+    Write-ProtectedItems -Items $protectedItems
 }
 else {
-    $categoryOrder = @('exe', 'dll', 'steam-config', 'registry', 'startup', 'security', 'process', 'file', 'other')
+    $categoryOrder = @('files', 'config', 'registry', 'startup', 'security', 'process', 'other')
     foreach ($category in $categoryOrder) {
         $items = @($detectedItems | Where-Object { $_.Category -eq $category })
         if ($items.Count -eq 0) { continue }
@@ -1914,24 +2300,14 @@ else {
         $index = 1
         foreach ($item in $items) {
             Write-Status ('    {0,2}. ' -f $index) Muted -NoNewline
-            Write-Status $item.RuleTitle Danger -NoNewline
-            Write-Status '  ·  ' Dim -NoNewline
-            Write-Status $item.Action.type Muted
-            Write-Status ("        {0}" -f $item.Label) Path
+            Write-Status $item.Label Path
             $index++
         }
         Write-Blank
     }
     Write-KeyValue '已扫描到' ($detectedItems.Count.ToString() + ' 项') Danger
 
-    if (@($protectedItems).Count -gt 0) {
-        Write-Blank
-        Write-Status ('  🛡️ 官方文件保护：{0} 项 Valve 数字签名文件已自动跳过（Steam 官方组件，不清理）' -f @($protectedItems).Count) Success
-        foreach ($p in @($protectedItems) | Select-Object -Unique -Property Label) {
-            Write-Status ('        · ' + $p.Label) Muted
-        }
-        Write-Blank
-    }
+    Write-ProtectedItems -Items $protectedItems
 
     Write-Section '⚠️ 注意事项'
     Write-Status '    1. 此工具不影响游戏、存档、创意工坊、MOD，请放心使用~' WarningSoft

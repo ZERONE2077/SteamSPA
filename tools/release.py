@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""SteamSPA 发布：commit + push（push 必须走 python，见 docs/维护笔记.md）。"""
+"""SteamSPA 发布：commit + push（push 必须走 python，见 research/README.md）。"""
 import subprocess, sys, io, os, time
 
-ROOT = r'D:\Dev\SteamSPA'
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def run(args, env=None):

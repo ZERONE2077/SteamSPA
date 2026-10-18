@@ -86,6 +86,145 @@ function Normalize-DefenderPath {
     return $normalized.TrimEnd('\', '/') -replace '/', '\'
 }
 
+function New-ScheduledTaskSnapshotItem {
+    param(
+        [string]$Name,
+        [string]$Path,
+        $Actions
+    )
+
+    $actionItems = @()
+    foreach ($action in @($Actions)) {
+        $actionItems += [pscustomobject]@{
+            Execute   = [string]$action.Execute
+            Arguments = [string]$action.Arguments
+        }
+    }
+
+    return [pscustomobject]@{
+        Name     = $Name
+        Path     = $Path
+        TaskName = $Name
+        TaskPath = $Path
+        Actions  = @($actionItems)
+    }
+}
+
+function ConvertTo-ScheduledTaskFolderPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return '\'
+    }
+
+    $trimmed = $Path.Trim()
+    if ($trimmed -eq '\') {
+        return '\'
+    }
+
+    # COM returns the full task path; Get-ScheduledTask returns the folder path.
+    $parent = Split-Path -Parent $trimmed
+    if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq '\') {
+        return '\'
+    }
+
+    return $parent.TrimEnd('\') + '\'
+}
+
+function Add-ScheduledTaskFolderSnapshot {
+    param($Folder, $Items)
+
+    foreach ($task in @($Folder.GetTasks(1))) {
+        try {
+            $definition = $task.Definition
+            $taskFolderPath = ConvertTo-ScheduledTaskFolderPath -Path ([string]$task.Path)
+            $taskItem = New-ScheduledTaskSnapshotItem -Name ([string]$task.Name) -Path $taskFolderPath -Actions $definition.Actions
+            $Items.Add($taskItem)
+        }
+        catch {
+        }
+    }
+
+    foreach ($child in @($Folder.GetFolders(1))) {
+        try {
+            Add-ScheduledTaskFolderSnapshot -Folder $child -Items $Items
+        }
+        catch {
+        }
+    }
+}
+
+function Get-ScheduledTaskSnapshot {
+    param([switch]$Refresh)
+
+    if (-not $Refresh -and $script:ScheduledTaskSnapshotLoaded) {
+        return @($script:ScheduledTaskSnapshot)
+    }
+
+    $items = New-Object System.Collections.Generic.List[object]
+    $loadedFromCom = $false
+
+    try {
+        $service = New-Object -ComObject Schedule.Service
+        $service.Connect()
+        $rootFolder = $service.GetFolder('\')
+        Add-ScheduledTaskFolderSnapshot -Folder $rootFolder -Items $items
+        $loadedFromCom = $true
+    }
+    catch {
+        $loadedFromCom = $false
+    }
+
+    if (-not $loadedFromCom -and (Get-Command -Name Get-ScheduledTask -ErrorAction SilentlyContinue)) {
+        foreach ($task in @(Get-ScheduledTask -ErrorAction SilentlyContinue)) {
+            $taskName = [string]$task.TaskName
+            if ([string]::IsNullOrWhiteSpace($taskName)) {
+                $taskName = [string]$task.Name
+            }
+            $taskPath = [string]$task.TaskPath
+            if ([string]::IsNullOrWhiteSpace($taskPath)) {
+                $taskPath = [string]$task.Path
+            }
+            $taskFolderPath = ConvertTo-ScheduledTaskFolderPath -Path $taskPath
+            $items.Add((New-ScheduledTaskSnapshotItem -Name $taskName -Path $taskFolderPath -Actions $task.Actions))
+        }
+    }
+
+    $script:ScheduledTaskSnapshot = $items.ToArray()
+    $script:ScheduledTaskSnapshotLoaded = $true
+    return $script:ScheduledTaskSnapshot
+}
+
+function Find-ScheduledTasksByContains {
+    param([string]$Needle)
+
+    if ([string]::IsNullOrWhiteSpace($Needle)) {
+        return @()
+    }
+
+    return @(Get-ScheduledTaskSnapshot | Where-Object {
+        $task = $_
+        @($task.Actions) | Where-Object {
+            $expandedExecute = [Environment]::ExpandEnvironmentVariables([string]$_.Execute)
+            $expandedArguments = [Environment]::ExpandEnvironmentVariables([string]$_.Arguments)
+            ($expandedExecute -like "*$Needle*") -or
+            ($expandedArguments -like "*$Needle*")
+        }
+    })
+}
+
+function Test-ScheduledTaskExists {
+    param([string]$Name)
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        return $false
+    }
+
+    return @(Get-ScheduledTaskSnapshot | Where-Object {
+        [string]$_.Name -eq $Name
+    }).Count -gt 0
+}
+
 function Test-ActionExists {
     param($Action, [hashtable]$Variables)
 
@@ -93,7 +232,6 @@ function Test-ActionExists {
         'file' {
             $path = Resolve-Template -Text $Action.path -Variables $Variables
             if (-not (Test-Path -LiteralPath $path)) { return $false }
-            if (Test-ValveSignedFile -Path $path) { return $false }
             return $true
         }
         'registry-key' {
@@ -130,17 +268,11 @@ function Test-ActionExists {
             return $null -ne (Get-Service -Name $Action.name -ErrorAction SilentlyContinue)
         }
         'task' {
-            return $null -ne (Get-ScheduledTask -TaskName $Action.name -ErrorAction SilentlyContinue)
+            return (Test-ScheduledTaskExists -Name $Action.name)
         }
         'task-contains' {
             $needle = Resolve-Template -Text $Action.contains -Variables $Variables
-            $matches = Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object {
-                $task = $_
-                @($task.Actions) | Where-Object {
-                    ([string]$_.Execute -like "*$needle*") -or ([string]$_.Arguments -like "*$needle*")
-                }
-            }
-            return $null -ne (@($matches)[0])
+            return (@(Find-ScheduledTasksByContains -Needle $needle).Count -gt 0)
         }
         default {
             return $false

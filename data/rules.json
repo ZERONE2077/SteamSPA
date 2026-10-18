@@ -19,7 +19,9 @@
                 "research/samples/steam.run/steam.run.001.ps1",
                 "research/samples/steam.run/steam.run.002.ps1",
                 "research/samples/steam.work/steam.icu.001.ps1",
-                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
+                "research/samples/steam-run.com/steamcdkey.cn.001.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -157,7 +159,9 @@
                 "research/samples/47.100.121.251/47.100.121.251.ps1",
                 "research/samples/47.98.148.132/47.98.148.132.ps1",
                 "research/samples/vfc88.cn/vfc88.cn.001.ps1",
-                "research/samples/vfc88.cn/ss.vfc77.cn.001.ps1"
+                "research/samples/vfc88.cn/ss.vfc77.cn.001.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -217,6 +221,47 @@
             ]
         },
         {
+            "id": "unialls-sdko-loader",
+            "title": "Unialls sdko 假入库加载器 (需确认)",
+            "sources": [
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\sdko.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\core.exe"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\dwmapi.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\SdkoInjector.exe"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\.cef-enable-remote-debugging"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\SdkoInjector.log"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\SdkoInjector.log"
+                }
+            ]
+        },
+        {
             "id": "steam-config-files",
             "title": "STEAM 配置文件 / Beta 标志 / appdata 缓存",
             "sources": [
@@ -225,7 +270,9 @@
                 "research/samples/steam-run.com/steam-run.com.002.ps1",
                 "research/samples/steam-run.com/steam-run.com.003.ps1",
                 "research/samples/steam-run.com/steam-run.com.004.ps1",
-                "research/samples/steam.work/steam.icu.001.ps1"
+                "research/samples/steam.work/steam.icu.001.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -270,7 +317,7 @@
         },
         {
             "id": "registry-steamtools",
-            "title": "注册表 HKCU\\Software\\Valve\\Steamtools",
+            "title": "注册表 Steamtools / SteamTools 键 (HKCU + HKLM)",
             "sources": [
                 "research/samples/steam-run.com/142785900.001.ps1",
                 "research/samples/steam-run.com/steam-run.com.001.ps1",
@@ -279,7 +326,8 @@
                 "research/samples/steam-run.com/steam-run.com.004.ps1",
                 "research/samples/steam.run/cdks.run.001.ps1",
                 "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1"
+                "research/samples/steam.run/steam.run.002.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -327,6 +375,21 @@
                 {
                     "type": "registry-key",
                     "path": "HKCU:\\Software\\Valve\\Steamtools",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKCU:\\Software\\SteamTools",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKLM:\\Software\\SteamTools",
+                    "recurse": true
+                },
+                {
+                    "type": "registry-key",
+                    "path": "HKLM:\\Software\\Valve\\Steamtools",
                     "recurse": true
                 }
             ]
@@ -392,7 +455,9 @@
             "sources": [
                 "research/samples/steam.run/cdks.run.001.ps1",
                 "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1"
+                "research/samples/steam.run/steam.run.002.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "medium",
@@ -451,7 +516,10 @@
                 "research/samples/steam.run/steam.run.001.ps1",
                 "research/samples/steam.run/steam.run.002.ps1",
                 "research/samples/steam-run.com/steamcdkey.cn.001.ps1",
-                "research/samples/steamcn.cc/steamcn.cc.001.ps1"
+                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "high",
@@ -524,6 +592,14 @@
                 {
                     "type": "defender-exclusion-process",
                     "name": "curl.exe"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "${SteamPath}\\sdko.dll"
+                },
+                {
+                    "type": "defender-exclusion-path",
+                    "path": "C:\\tmp\\AppData\\LocalLow\\Unialls\\Temp\\Download\\steams.zip"
                 }
             ]
         },
@@ -626,7 +702,9 @@
             "id": "opensteamtool-root-files",
             "title": "OpenSteamTool 根目录文件",
             "sources": [
-                "https://github.com/OpenSteam001/OpenSteamTool"
+                "https://github.com/OpenSteam001/OpenSteamTool",
+                "research/samples/139.196.146.200/139.196.146.200.ps1",
+                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "low",
@@ -653,7 +731,8 @@
             "id": "opensteamtool-lua-config",
             "title": "OpenSteamTool Lua 配置目录 (需确认，默认禁用)",
             "sources": [
-                "https://github.com/OpenSteam001/OpenSteamTool"
+                "https://github.com/OpenSteam001/OpenSteamTool",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
             ],
             "enabled": false,
             "risk": "medium",
@@ -710,6 +789,110 @@
                 {
                     "type": "file",
                     "path": "${SteamPath}\\steam-lucky.exe"
+                }
+            ]
+        },
+        {
+            "id": "rival-residue-steam-root",
+            "title": "竞品残留：假入库竞品 DLL / 目录 (需确认)",
+            "sources": [
+                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
+            ],
+            "enabled": true,
+            "risk": "high",
+            "confirm": true,
+            "actions": [
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\diversion.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\winmm.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\steamclient_loader.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\GameOverlayRenderer64.bak"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\xinput9_1_0.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\msimg32.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dbghelp.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\Core",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\CoreBeta",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\diversion",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\diversion.dll"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\bin\\diversion",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\cdk.exe"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\f1.exe"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\steam_emu.ini"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\emu.cfg"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\local.vdf.bak"
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\config\\stUI",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\config\\steamunlocked",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\config\\greenluma",
+                    "recurse": true
+                },
+                {
+                    "type": "file",
+                    "path": "${SteamPath}\\dinput8.dll"
                 }
             ]
         },
@@ -862,7 +1045,8 @@
             "id": "sdl3-voder-family",
             "title": "SDL3_voder 假入库家族残留 (steamcn.cc)",
             "sources": [
-                "research/samples/steamcn.cc/steamcn.cc.001.ps1"
+                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
+                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
             ],
             "enabled": true,
             "risk": "low",
