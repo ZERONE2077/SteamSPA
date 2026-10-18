@@ -63,11 +63,11 @@ print('action-types: %s' % ','.join(ty))
 missing, refs = [], set()
 for r in rules:
     for s in r.get('sources', []):
-        if s.startswith('scripts/'):
+        if s.startswith('research/samples/'):
             refs.add(s)
             if not os.path.exists(os.path.join(ROOT, s.replace('/', '\\'))):
                 missing.append(s)
-print('source-refs: %d   missing: %s' % (len(refs), ','.join(sorted(set(missing))) or '(none)'))
+print('source-refs: %d checked=%d missing=%s' % (len(refs), len(refs) - len(set(missing)), ','.join(sorted(set(missing))) or '(none)'))
 
 if dup or missing:
     sys.exit(2)

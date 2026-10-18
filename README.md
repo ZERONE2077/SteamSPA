@@ -54,6 +54,11 @@ uninstall.ps1  ← 唯一对外分发产物
 
 样本归档、规则更新和验证步骤见 `research/README.md`。
 
+## 发布
+
+修改规则或源码后执行 `tools/publish.ps1`。脚本会先构建、运行冒烟测试、校验规则，
+再以取消模式实际运行生成的 `uninstall.ps1`；全部通过后才提交并推送 `origin/main`。
+
 ## 安全设计
 
 - 扫描阶段不删除文件。

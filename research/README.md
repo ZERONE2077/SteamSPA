@@ -52,6 +52,18 @@ python .\tools\validate-rules.py
 正常执行 `tools/build.ps1` 会把 `data/version.json` 的 `updatedAt` 自动写成当天日期，
 并重新生成 `uninstall.ps1`；`-Check` 只校验生成物，不会改日期。
 
+## 4. 发布
+
+构建、冒烟测试、规则校验和生成脚本试运行全部通过后，执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\publish.ps1 -Message "Update SteamSPA"
+```
+
+发布脚本只提交 `README.md`、`uninstall.ps1`、`data/`、`src/`、`tools/`、`tests/`、
+`schemas/` 和 `research/README.md`，不会提交 `research/samples/`、`research/docs/`
+或本地压缩包。推送后会核对远端提交，以及线上 `uninstall.ps1` 的版本和日期。
+
 ## 新增样本时的人工检查
 
 只回答下面几项，够写规则就停：
