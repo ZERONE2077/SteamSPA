@@ -1,142 +1,68 @@
-# SteamSPA source module
-# Edit this module, then run tools/build.ps1.
+﻿# SteamSPA · 终端输出层
+# 只有这个文件直接调用 Write-Host / Read-Host。其余模块只返回数据。
 
-function Get-ThemeColor {
-    param([string]$Name)
+function Initialize-SpaConsole {
+    $redirected = [Console]::IsOutputRedirected
+    # 重定向时也要切 UTF-8：publish.ps1 / 测试通过管道读取中文输出。
+    try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch {}
 
-    switch ($Name) {
-        # Calm, terminal-native palette inspired by Claude/Gemini CLI:
-        # warm semantic accents, low-contrast borders, no saturated rainbow colors.
-        'Ink'       { return '229;231;235' }
-        'Muted'     { return '148;163;184' }
-        'Dim'       { return '100;116;139' }
-        'Border'    { return '51;65;85' }
-        'Accent'    { return '125;211;252' }
-        'Accent2'   { return '196;181;253' }
-        'Success'   { return '134;239;172' }
-        'Warning'   { return '253;224;71' }
-        'WarningSoft' { return '254;240;138' }
-        'Danger'    { return '252;165;165' }
-        'Title'     { return '56;189;248' }
-        'Path'      { return '186;230;253' }
-        'Code'      { return '203;213;225' }
-        default     { return $null }
+    $ansi = $false
+    if (-not $redirected -and -not $env:NO_COLOR) {
+        try { $ansi = [bool]$Host.UI.SupportsVirtualTerminal } catch {}
+        if ($env:WT_SESSION) { $ansi = $true }
+    }
+
+    $Spa.Ui = @{
+        Redirected      = $redirected
+        InputRedirected = [Console]::IsInputRedirected
+        Ansi            = $ansi
+        Color           = (-not $redirected -and -not $env:NO_COLOR)
     }
 }
 
-function ConvertTo-ThemeRole {
-    param($Color)
+function Write-Ui {
+    param([string]$Text = '', [string]$Role = 'Ink', [switch]$NoNewline)
 
-    switch ([string]$Color) {
-        'Black'       { return 'Dim' }
-        'DarkBlue'    { return 'Accent2' }
-        'DarkGreen'   { return 'Success' }
-        'DarkCyan'    { return 'Border' }
-        'DarkRed'     { return 'Danger' }
-        'DarkMagenta' { return 'Accent2' }
-        'DarkYellow'  { return 'Warning' }
-        'Gray'        { return 'Ink' }
-        'DarkGray'    { return 'Muted' }
-        'Blue'        { return 'Accent2' }
-        'Green'       { return 'Success' }
-        'Cyan'        { return 'Accent' }
-        'Red'         { return 'Danger' }
-        'Magenta'     { return 'Accent2' }
-        'Yellow'      { return 'Warning' }
-        'White'       { return 'Ink' }
-        default       { return [string]$Color }
-    }
-}
-
-function Get-Ansi {
-    param($Color)
-
-    if ($env:NO_COLOR) { return '' }
-    $role = ConvertTo-ThemeRole $Color
-    $rgb = Get-ThemeColor $role
-    if (-not $rgb) { return '' }
-    return "$([char]27)[38;2;${rgb}m"
-}
-
-function Write-Status {
-    param([string]$Message = '', $Color = 'Ink', [switch]$NoNewline)
-
-    $ansi = Get-Ansi $Color
-    if ($ansi) {
-        $reset = "$([char]27)[0m"
-        if ($NoNewline) {
-            Write-Host ($ansi + $Message + $reset) -NoNewline
+    $ui = $Spa.Ui
+    if ($ui -and $ui.Ansi) {
+        $rgb = switch ($Role) {
+            'Muted'   { '148;163;184' }
+            'Accent'  { '125;211;252' }
+            'Success' { '134;239;172' }
+            'Warning' { '253;224;71' }
+            'Danger'  { '252;165;165' }
+            'Path'    { '186;230;253' }
+            default   { '229;231;235' }
         }
-        else {
-            Write-Host ($ansi + $Message + $reset)
-        }
+        $esc = [char]27
+        Write-Host ("$esc[38;2;${rgb}m$Text$esc[0m") -NoNewline:$NoNewline
         return
     }
-
-    $fallback = [ConsoleColor]::Gray
-    try {
-        $fallback = [ConsoleColor]([string]$Color)
-        Write-Host $Message -ForegroundColor $fallback -NoNewline:$NoNewline
-    }
-    catch {
-        Write-Host $Message -NoNewline:$NoNewline
-    }
-}
-
-function Write-GradientText {
-    param(
-        [string]$Text,
-        [int[]]$From = @(45, 212, 255),
-        [int[]]$To = @(110, 231, 183)
-    )
-
-    if ($env:NO_COLOR) {
-        Write-Host $Text
+    if ($ui -and $ui.Color) {
+        $color = switch ($Role) {
+            'Muted'   { 'DarkGray' }
+            'Accent'  { 'Cyan' }
+            'Success' { 'Green' }
+            'Warning' { 'Yellow' }
+            'Danger'  { 'Red' }
+            default   { 'Gray' }
+        }
+        Write-Host $Text -ForegroundColor $color -NoNewline:$NoNewline
         return
     }
-
-    $chars = $Text.ToCharArray()
-    $steps = [Math]::Max(1, $chars.Count - 1)
-    for ($i = 0; $i -lt $chars.Count; $i++) {
-        $t = $i / $steps
-        $r = [int]($From[0] + (($To[0] - $From[0]) * $t))
-        $g = [int]($From[1] + (($To[1] - $From[1]) * $t))
-        $b = [int]($From[2] + (($To[2] - $From[2]) * $t))
-        Write-Host "$([char]27)[38;2;$r;$g;${b}m$($chars[$i])$([char]27)[0m" -NoNewline
-    }
-    Write-Host ''
+    Write-Host $Text -NoNewline:$NoNewline
 }
 
-function Write-Blank {
-    Write-Host ''
-}
-
-function Write-Rule {
-    param([string]$Title, $Color = 'Border')
-    Write-Status '────────────────────────────────────────────────────────────' $Color
-    if (-not [string]::IsNullOrWhiteSpace($Title)) {
-        Write-Status ("  {0}" -f $Title) Accent
-        Write-Status '────────────────────────────────────────────────────────────' $Color
-    }
-}
-
-function Get-TextDisplayWidth {
+# 中文在终端里占两列，按字符数补空格会错位。
+function Get-DisplayWidth {
     param([string]$Text)
-
-    if ([string]::IsNullOrEmpty($Text)) { return 0 }
-
     $width = 0
-    foreach ($ch in $Text.ToCharArray()) {
-        $code = [int][char]$ch
-        if (
-            ($code -ge 0x1100 -and $code -le 0x11FF) -or
-            ($code -ge 0x2E80 -and $code -le 0xA4CF) -or
-            ($code -ge 0xAC00 -and $code -le 0xD7A3) -or
-            ($code -ge 0xF900 -and $code -le 0xFAFF) -or
-            ($code -ge 0xFE10 -and $code -le 0xFE6F) -or
-            ($code -ge 0xFF00 -and $code -le 0xFF60) -or
-            ($code -ge 0xFFE0 -and $code -le 0xFFE6)
-        ) {
+    foreach ($ch in ([string]$Text).ToCharArray()) {
+        $c = [int]$ch
+        if (($c -ge 0x1100 -and $c -le 0x115F) -or ($c -ge 0x2E80 -and $c -le 0xA4CF) -or
+            ($c -ge 0xAC00 -and $c -le 0xD7A3) -or ($c -ge 0xF900 -and $c -le 0xFAFF) -or
+            ($c -ge 0xFE30 -and $c -le 0xFE4F) -or ($c -ge 0xFF00 -and $c -le 0xFF60) -or
+            ($c -ge 0xFFE0 -and $c -le 0xFFE6)) {
             $width += 2
         }
         else {
@@ -146,116 +72,66 @@ function Get-TextDisplayWidth {
     return $width
 }
 
-function Format-DisplayPadRight {
+function Format-PadRight {
     param([string]$Text, [int]$Width)
-
-    $displayWidth = Get-TextDisplayWidth $Text
-    $padding = [Math]::Max(0, $Width - $displayWidth)
-    return $Text + (' ' * $padding)
+    return $Text + (' ' * [Math]::Max(0, $Width - (Get-DisplayWidth $Text)))
 }
 
-function Write-KeyValue {
-    param([string]$Key, [string]$Value, $ValueColor = 'Ink')
-    Write-Status ('  ' + (Format-DisplayPadRight $Key 18)) Muted -NoNewline
-    Write-Status $Value $ValueColor
-}
-
-function Write-Section {
+function Write-UiSection {
     param([string]$Title)
-    Write-Blank
-    Write-Status ("  {0}" -f $Title) Accent
-    Write-Status '  ────────────────────────────────────────────────────────' Border
+    Write-Host ''
+    Write-Ui ('  ' + $Title) Accent
+    Write-Ui ('  ' + ('-' * 56)) Muted
 }
 
-function Write-ProgressLine {
-    param(
-        [int]$Current,
-        [int]$Total,
-        [string]$Status = '扫描中'
-    )
+function Write-UiKeyValue {
+    param([string]$Key, [string]$Value, [string]$Role = 'Ink')
+    Write-Ui ('  ' + (Format-PadRight $Key 14)) Muted -NoNewline
+    Write-Ui $Value $Role
+}
 
-    $width = 28
+# 一行结果：  [标签]  内容
+function Write-UiResult {
+    param([string]$Tag, [string]$Text, [string]$Role = 'Ink')
+    Write-Ui ('  ' + (Format-PadRight $Tag 10)) $Role -NoNewline
+    Write-Ui $Text $Role
+}
+
+function Write-UiProgress {
+    param([int]$Current, [int]$Total)
+    if ($Spa.Ui -and $Spa.Ui.Redirected) { return }
     if ($Total -le 0) { $Total = 1 }
-    $percent = [Math]::Min(100, [Math]::Max(0, [int](($Current / $Total) * 100)))
-    $filled = [Math]::Min($width, [Math]::Max(0, [int][Math]::Round(($percent / 100) * $width)))
-    $bar = ('█' * $filled) + ('░' * ($width - $filled))
-    $line = "  {0,-8} [{1}] {2,3}%" -f $Status, $bar, $percent
+    $percent = [int][Math]::Floor($Current * 100 / $Total)
+    $width = 30
+    $filled = [int][Math]::Floor($percent * $width / 100)
+    # 用 ASCII 画进度条：█ 在中文字体里可能是双宽，会折行。
+    $bar = ('=' * $filled) + (' ' * ($width - $filled))
+    Write-Ui ("`r  扫描中 [{0}] {1,3}%" -f $bar, $percent) Accent -NoNewline
+}
 
-    if ([Console]::IsOutputRedirected -or $env:NO_COLOR) {
-        if ($Current -eq 0 -or $Current -ge $Total) {
-            Write-Status $line Accent
-        }
-        return
-    }
+function Clear-UiProgress {
+    if ($Spa.Ui -and $Spa.Ui.Redirected) { return }
+    Write-Host ("`r" + (' ' * 50) + "`r") -NoNewline
+}
 
-    Write-Status ($line + "`r") Accent -NoNewline
-    if ($Current -ge $Total) {
-        Write-Host ''
+# 读取一个选项。空输入或输入流结束时返回默认值（默认值应当是安全选项）。
+function Read-UiChoice {
+    param([string]$Prompt, [string[]]$Allowed, [string]$Default)
+    while ($true) {
+        Write-Ui ('  ' + $Prompt + ' ') Accent -NoNewline
+        $raw = Read-Host
+        if ($null -eq $raw) { return $Default }
+        $value = $raw.Trim().ToUpperInvariant()
+        if ($value -eq '') { return $Default }
+        if ($Allowed -contains $value) { return $value }
+        if ($Spa.Ui -and $Spa.Ui.InputRedirected) { return $Default }
+        Write-Ui ('  请输入 ' + ($Allowed -join ' / ')) Warning
     }
 }
 
-function Write-Step {
-    param([string]$Label, [string]$Value = '', $ValueColor = 'Ink')
-    Write-Status '  ◆ ' Accent -NoNewline
-    Write-Status $Label Muted -NoNewline
-    if (-not [string]::IsNullOrWhiteSpace($Value)) {
-        Write-Status $Value $ValueColor
-    }
-    else {
-        Write-Host ''
-    }
-}
-
-function Write-Result {
-    param([string]$Icon, [string]$Label, [string]$Text, $Color = 'Ink')
-    Write-Status ("  {0} " -f $Icon) $Color -NoNewline
-    Write-Status ("{0,-8}" -f $Label) Muted -NoNewline
-    Write-Status $Text $Color
-}
-
-function Write-ProtectedItems {
-    param($Items)
-
-    if (@($Items).Count -eq 0) { return }
-
-    Write-Blank
-    Write-Status ('  🛡️ 官方文件保护：{0} 项 Valve 数字签名文件已自动跳过（Steam 官方组件，不清理）' -f @($Items).Count) Success
-    foreach ($item in @($Items) | Select-Object -Unique -Property Label) {
-        Write-Status ('        · ' + $item.Label) Muted
-    }
-    Write-Blank
-}
-
-function Get-RiskText {
-    param([string]$Risk)
-    switch ($Risk) {
-        'low' { return '低风险' }
-        'medium' { return '中风险' }
-        'high' { return '高风险' }
-        default { return $Risk }
-    }
-}
-
-function Get-RiskColor {
-    param([string]$Risk)
-    switch ($Risk) {
-        'low' { return 'Muted' }
-        'medium' { return 'Warning' }
-        'high' { return 'Danger' }
-        default { return 'Ink' }
-    }
-}
-
-function Read-CleanupConfirmation {
-    Write-Blank
-    Write-Section '✅ 确认清理？'
-    Write-Status '  输入 Y 并回车 = 确认清理      |  其他任何输入 = 取消' Muted
-    $choice = [string](Read-Host '  请选择')
-    if ($choice -and $choice.Trim().ToUpperInvariant() -eq 'Y') {
-        Write-Status '确认清理' Accent
-        return $true
-    }
-
-    Write-Status '取消' Warning
-    return $false
+function Wait-UiExit {
+    if ($Spa.Ui -and $Spa.Ui.InputRedirected) { return }
+    Write-Host ''
+    Write-Ui '  按回车退出...' Accent -NoNewline
+    Read-Host | Out-Null
 }

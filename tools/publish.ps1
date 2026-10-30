@@ -37,11 +37,11 @@ Invoke-Step 'Validate embedded rules' {
 }
 
 Write-Host '==> Run generated artifact in scan-only mode' -ForegroundColor Cyan
-$artifactOutput = ('N' | powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\uninstall.ps1' -NoPause 2>&1 | Out-String)
+$artifactOutput = (powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\uninstall.ps1' -ScanOnly -NoPause 2>&1 | Out-String)
 if ($LASTEXITCODE -ne 0) {
     throw "uninstall.ps1 failed with exit code $LASTEXITCODE`n$artifactOutput"
 }
-if ($artifactOutput -notmatch '扫描完成' -or $artifactOutput -notmatch '已取消清理') {
+if ($artifactOutput -notmatch '扫描完成') {
     throw "uninstall.ps1 did not report scan completion`n$artifactOutput"
 }
 Write-Host 'Generated artifact ran successfully.' -ForegroundColor Green

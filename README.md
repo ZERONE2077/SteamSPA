@@ -33,24 +33,49 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create
 
 ## 参数
 
-- `-Risk low,medium,high`：选择风险级别
-- `-Only rule-id`：只处理指定规则
-- `-NoBackup`：不创建清理备份
+- `-ScanOnly`：只扫描并列出，不询问、不删除
+- `-Risk low,medium,high`：只处理指定风险级别的规则
+- `-Only rule-id,...`：只处理指定规则
+- `-NoBackup`：不创建清理备份（不推荐）
 - `-NoPause`：结束时不等待按键
+- `-Help`：显示帮助
+
+退出码（仅文件方式运行时）：0 正常，1 部分失败，2 参数错误，4 用户取消，5 需要管理员。
+
+## 运行流程
+
+1. 显示本机信息；不是管理员时询问是否以管理员身份重新打开（脚本自身源码写到临时文件后提权运行，不重新下载）。
+2. 列出 PowerShell 历史里的可疑下载命令（仅显示，不作为删除依据）。
+3. 扫描所有规则（只读），同一目标在多条规则里出现只算一次。
+4. 按类别列出发现项，标出 `[需确认]` 项；Valve 签名文件和受保护目录单独列出且不删除。
+5. 确认：`Y` 全部清理，`S` 只清理常规项（跳过 `[需确认]`），`N` 或回车取消。
+6. STEAM 正在运行时先关闭；先结束进程、删计划任务，再删文件和注册表；每项删除前先备份，备份失败则不删。
+7. 汇总结果和备份位置。
+
+## 备份与恢复
+
+备份在 `%LOCALAPPDATA%\SteamSPA\backups\<时间>\`：被删文件原样副本、注册表 `.reg` 导出、计划任务 XML、
+`manifest.json` 清单和 `restore.ps1`。运行 `restore.ps1` 可恢复文件、注册表和计划任务；
+Defender 排除项只记录在清单里，不自动恢复。
 
 ## 架构
 
 ```text
-data/rules.json
+data/rules.json + data/version.json
       ↓
-src/*.ps1
+src/10-ui.ps1        终端输出（唯一调用 Write-Host 的地方）
+src/20-context.ps1   参数、权限、STEAM 路径、路径模板、删除安全边界、提权
+src/30-targets.ps1   每种规则类型的“查找 / 删除”
+src/40-backup.ps1    清理前备份、restore.ps1
+src/50-history.ps1   PowerShell 历史线索
+src/90-main.ps1      主流程
       ↓
-tools/build.ps1
-      ↓
-uninstall.ps1  ← 唯一对外分发产物
+tools/build.ps1  →  uninstall.ps1（唯一对外分发产物，整体包在 & { } 里运行）
 ```
 
-`data/rules.json` 是运行规则的唯一数据源。修改规则或源码后执行 `tools/build.ps1`。
+`data/rules.json` 是运行规则的唯一数据源。支持的动作类型：`file`、`registry-key`、`registry-value`、
+`defender-exclusion-path`、`defender-exclusion-extension`、`defender-exclusion-process`、`process`、`task`、`task-contains`。
+修改规则或源码后执行 `tools/build.ps1`，再执行 `tests/SmokeTests.ps1`。
 
 样本归档、规则更新和验证步骤见 `research/README.md`。
 
@@ -61,13 +86,14 @@ uninstall.ps1  ← 唯一对外分发产物
 
 ## 安全设计
 
-- 扫描阶段不删除文件。
-- 清理前必须明确确认。
+- 扫描阶段只读，不修改系统；清理前必须明确确认，默认选项是取消。
+- 路径模板里的变量缺失（例如没找到 STEAM）时直接跳过该规则，不会拼出残缺路径。
+- 硬性边界：不删磁盘根目录、系统和用户根目录、STEAM 根目录及 config/bin/steamapps/userdata 等，
+  `steamapps`（游戏）和 `userdata`（存档）下的任何内容都不碰。
 - Valve 有效数字签名文件自动保护。
-- Defender 模块不存在时安全跳过相关动作。
-- DNS、代理等可能是用户主动配置的设置默认只报告。
-- PowerShell 历史记录只作为线索，不单独作为删除依据。
-- 默认创建清理备份，不在桌面生成报告。
+- 非空目录、带子项的注册表项只在规则写明 `recurse` 时才整体删除。
+- Defender 不可用或无权读取时安全跳过并提示。
+- 默认创建清理备份，备份失败的项目不删除。
 
 ## 目录
 

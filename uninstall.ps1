@@ -1,69 +1,11 @@
-﻿<#
-.SYNOPSIS
-    SteamSPA clean engine.
-.DESCRIPTION
-    Scans SteamSPA leftovers first, then asks for confirmation before cleanup.
-#>
-# NOTE: Chinese UI text is kept as UTF-8. The generated uninstall.ps1 uses a BOM
-# so Windows PowerShell 5.1 reads it correctly on non-UTF-8 Windows code pages.
-Clear-Host
-$host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具'
-$OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+﻿# SteamSPA · STEAM 假入库残留清理工具
+# 生成文件，请勿手改。源码在 src/，规则在 data/rules.json，用 tools/build.ps1 生成。
+# 整个程序包在 & { } 里运行：irm | iex 时不会在用户会话里留下函数和变量。
+& {
+$SteamSPAReleaseVersion = '4.0'
+$SteamSPAUpdatedAt = '2026-10-30'
 
-
-# NOTE:
-# This script intentionally avoids a script-level param() block so it can be
-# executed by `irm <raw-url> | iex` reliably. Arguments are parsed from $args
-# for normal `-File` usage.
-$NoBackup = $false
-$NoPause = $false
-$Only = @()
-$Risk = @('low', 'medium', 'high')
-
-for ($i = 0; $i -lt $args.Count; $i++) {
-    switch -Regex ($args[$i]) {
-        '^-NoBackup$' { $NoBackup = $true; continue }
-        '^-NoPause$' { $NoPause = $true; continue }
-        '^-Only$' {
-            $i++
-            if ($i -lt $args.Count) { $Only = @([string]$args[$i] -split ',') | Where-Object { $_ } }
-            continue
-        }
-        '^-Risk$' {
-            $i++
-            if ($i -lt $args.Count) {
-                $Risk = @([string]$args[$i] -split ',') | Where-Object { $_ -in @('low', 'medium', 'high') }
-                if (-not $Risk -or $Risk.Count -eq 0) { $Risk = @('low', 'medium', 'high') }
-            }
-            continue
-        }
-    }
-}
-
-if ($PSVersionTable.PSVersion -lt [version]'5.1') {
-    throw 'SteamSPA uninstall.ps1 requires Windows PowerShell 5.1 or later.'
-}
-
-
-$scriptRoot = $PSScriptRoot
-if ([string]::IsNullOrWhiteSpace($scriptRoot) -and -not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
-    $scriptRoot = Split-Path -Parent $PSCommandPath
-}
-if ([string]::IsNullOrWhiteSpace($scriptRoot) -and $MyInvocation.MyCommand -and -not [string]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)) {
-    $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-}
-if ([string]::IsNullOrWhiteSpace($scriptRoot)) {
-    $scriptRoot = Join-Path $env:TEMP 'SteamSPA'
-}
-if (-not (Test-Path -LiteralPath $scriptRoot)) {
-    New-Item -ItemType Directory -Path $scriptRoot -Force | Out-Null
-}
-
-$SteamSPAReleaseVersion = '3.2'
-$SteamSPAUpdatedAt = '2026-10-18'
-
-# Embedded rule database. Source of truth: data/rules.json
+# 内嵌规则库，来源：data/rules.json
 $EmbeddedTargetsJson = @'
 {
     "$schema": "./rules.schema.json",
@@ -1153,145 +1095,71 @@ $EmbeddedTargetsJson = @'
 }
 '@
 
-# SteamSPA source module
-# Edit this module, then run tools/build.ps1.
+# SteamSPA · 终端输出层
+# 只有这个文件直接调用 Write-Host / Read-Host。其余模块只返回数据。
 
-function Get-ThemeColor {
-    param([string]$Name)
+function Initialize-SpaConsole {
+    $redirected = [Console]::IsOutputRedirected
+    # 重定向时也要切 UTF-8：publish.ps1 / 测试通过管道读取中文输出。
+    try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch {}
 
-    switch ($Name) {
-        # Calm, terminal-native palette inspired by Claude/Gemini CLI:
-        # warm semantic accents, low-contrast borders, no saturated rainbow colors.
-        'Ink'       { return '229;231;235' }
-        'Muted'     { return '148;163;184' }
-        'Dim'       { return '100;116;139' }
-        'Border'    { return '51;65;85' }
-        'Accent'    { return '125;211;252' }
-        'Accent2'   { return '196;181;253' }
-        'Success'   { return '134;239;172' }
-        'Warning'   { return '253;224;71' }
-        'WarningSoft' { return '254;240;138' }
-        'Danger'    { return '252;165;165' }
-        'Title'     { return '56;189;248' }
-        'Path'      { return '186;230;253' }
-        'Code'      { return '203;213;225' }
-        default     { return $null }
+    $ansi = $false
+    if (-not $redirected -and -not $env:NO_COLOR) {
+        try { $ansi = [bool]$Host.UI.SupportsVirtualTerminal } catch {}
+        if ($env:WT_SESSION) { $ansi = $true }
+    }
+
+    $Spa.Ui = @{
+        Redirected      = $redirected
+        InputRedirected = [Console]::IsInputRedirected
+        Ansi            = $ansi
+        Color           = (-not $redirected -and -not $env:NO_COLOR)
     }
 }
 
-function ConvertTo-ThemeRole {
-    param($Color)
+function Write-Ui {
+    param([string]$Text = '', [string]$Role = 'Ink', [switch]$NoNewline)
 
-    switch ([string]$Color) {
-        'Black'       { return 'Dim' }
-        'DarkBlue'    { return 'Accent2' }
-        'DarkGreen'   { return 'Success' }
-        'DarkCyan'    { return 'Border' }
-        'DarkRed'     { return 'Danger' }
-        'DarkMagenta' { return 'Accent2' }
-        'DarkYellow'  { return 'Warning' }
-        'Gray'        { return 'Ink' }
-        'DarkGray'    { return 'Muted' }
-        'Blue'        { return 'Accent2' }
-        'Green'       { return 'Success' }
-        'Cyan'        { return 'Accent' }
-        'Red'         { return 'Danger' }
-        'Magenta'     { return 'Accent2' }
-        'Yellow'      { return 'Warning' }
-        'White'       { return 'Ink' }
-        default       { return [string]$Color }
-    }
-}
-
-function Get-Ansi {
-    param($Color)
-
-    if ($env:NO_COLOR) { return '' }
-    $role = ConvertTo-ThemeRole $Color
-    $rgb = Get-ThemeColor $role
-    if (-not $rgb) { return '' }
-    return "$([char]27)[38;2;${rgb}m"
-}
-
-function Write-Status {
-    param([string]$Message = '', $Color = 'Ink', [switch]$NoNewline)
-
-    $ansi = Get-Ansi $Color
-    if ($ansi) {
-        $reset = "$([char]27)[0m"
-        if ($NoNewline) {
-            Write-Host ($ansi + $Message + $reset) -NoNewline
+    $ui = $Spa.Ui
+    if ($ui -and $ui.Ansi) {
+        $rgb = switch ($Role) {
+            'Muted'   { '148;163;184' }
+            'Accent'  { '125;211;252' }
+            'Success' { '134;239;172' }
+            'Warning' { '253;224;71' }
+            'Danger'  { '252;165;165' }
+            'Path'    { '186;230;253' }
+            default   { '229;231;235' }
         }
-        else {
-            Write-Host ($ansi + $Message + $reset)
-        }
+        $esc = [char]27
+        Write-Host ("$esc[38;2;${rgb}m$Text$esc[0m") -NoNewline:$NoNewline
         return
     }
-
-    $fallback = [ConsoleColor]::Gray
-    try {
-        $fallback = [ConsoleColor]([string]$Color)
-        Write-Host $Message -ForegroundColor $fallback -NoNewline:$NoNewline
-    }
-    catch {
-        Write-Host $Message -NoNewline:$NoNewline
-    }
-}
-
-function Write-GradientText {
-    param(
-        [string]$Text,
-        [int[]]$From = @(45, 212, 255),
-        [int[]]$To = @(110, 231, 183)
-    )
-
-    if ($env:NO_COLOR) {
-        Write-Host $Text
+    if ($ui -and $ui.Color) {
+        $color = switch ($Role) {
+            'Muted'   { 'DarkGray' }
+            'Accent'  { 'Cyan' }
+            'Success' { 'Green' }
+            'Warning' { 'Yellow' }
+            'Danger'  { 'Red' }
+            default   { 'Gray' }
+        }
+        Write-Host $Text -ForegroundColor $color -NoNewline:$NoNewline
         return
     }
-
-    $chars = $Text.ToCharArray()
-    $steps = [Math]::Max(1, $chars.Count - 1)
-    for ($i = 0; $i -lt $chars.Count; $i++) {
-        $t = $i / $steps
-        $r = [int]($From[0] + (($To[0] - $From[0]) * $t))
-        $g = [int]($From[1] + (($To[1] - $From[1]) * $t))
-        $b = [int]($From[2] + (($To[2] - $From[2]) * $t))
-        Write-Host "$([char]27)[38;2;$r;$g;${b}m$($chars[$i])$([char]27)[0m" -NoNewline
-    }
-    Write-Host ''
+    Write-Host $Text -NoNewline:$NoNewline
 }
 
-function Write-Blank {
-    Write-Host ''
-}
-
-function Write-Rule {
-    param([string]$Title, $Color = 'Border')
-    Write-Status '────────────────────────────────────────────────────────────' $Color
-    if (-not [string]::IsNullOrWhiteSpace($Title)) {
-        Write-Status ("  {0}" -f $Title) Accent
-        Write-Status '────────────────────────────────────────────────────────────' $Color
-    }
-}
-
-function Get-TextDisplayWidth {
+# 中文在终端里占两列，按字符数补空格会错位。
+function Get-DisplayWidth {
     param([string]$Text)
-
-    if ([string]::IsNullOrEmpty($Text)) { return 0 }
-
     $width = 0
-    foreach ($ch in $Text.ToCharArray()) {
-        $code = [int][char]$ch
-        if (
-            ($code -ge 0x1100 -and $code -le 0x11FF) -or
-            ($code -ge 0x2E80 -and $code -le 0xA4CF) -or
-            ($code -ge 0xAC00 -and $code -le 0xD7A3) -or
-            ($code -ge 0xF900 -and $code -le 0xFAFF) -or
-            ($code -ge 0xFE10 -and $code -le 0xFE6F) -or
-            ($code -ge 0xFF00 -and $code -le 0xFF60) -or
-            ($code -ge 0xFFE0 -and $code -le 0xFFE6)
-        ) {
+    foreach ($ch in ([string]$Text).ToCharArray()) {
+        $c = [int]$ch
+        if (($c -ge 0x1100 -and $c -le 0x115F) -or ($c -ge 0x2E80 -and $c -le 0xA4CF) -or
+            ($c -ge 0xAC00 -and $c -le 0xD7A3) -or ($c -ge 0xF900 -and $c -le 0xFAFF) -or
+            ($c -ge 0xFE30 -and $c -le 0xFE4F) -or ($c -ge 0xFF00 -and $c -le 0xFF60) -or
+            ($c -ge 0xFFE0 -and $c -le 0xFFE6)) {
             $width += 2
         }
         else {
@@ -1301,529 +1169,621 @@ function Get-TextDisplayWidth {
     return $width
 }
 
-function Format-DisplayPadRight {
+function Format-PadRight {
     param([string]$Text, [int]$Width)
-
-    $displayWidth = Get-TextDisplayWidth $Text
-    $padding = [Math]::Max(0, $Width - $displayWidth)
-    return $Text + (' ' * $padding)
+    return $Text + (' ' * [Math]::Max(0, $Width - (Get-DisplayWidth $Text)))
 }
 
-function Write-KeyValue {
-    param([string]$Key, [string]$Value, $ValueColor = 'Ink')
-    Write-Status ('  ' + (Format-DisplayPadRight $Key 18)) Muted -NoNewline
-    Write-Status $Value $ValueColor
-}
-
-function Write-Section {
+function Write-UiSection {
     param([string]$Title)
-    Write-Blank
-    Write-Status ("  {0}" -f $Title) Accent
-    Write-Status '  ────────────────────────────────────────────────────────' Border
+    Write-Host ''
+    Write-Ui ('  ' + $Title) Accent
+    Write-Ui ('  ' + ('-' * 56)) Muted
 }
 
-function Write-ProgressLine {
-    param(
-        [int]$Current,
-        [int]$Total,
-        [string]$Status = '扫描中'
-    )
+function Write-UiKeyValue {
+    param([string]$Key, [string]$Value, [string]$Role = 'Ink')
+    Write-Ui ('  ' + (Format-PadRight $Key 14)) Muted -NoNewline
+    Write-Ui $Value $Role
+}
 
-    $width = 28
+# 一行结果：  [标签]  内容
+function Write-UiResult {
+    param([string]$Tag, [string]$Text, [string]$Role = 'Ink')
+    Write-Ui ('  ' + (Format-PadRight $Tag 10)) $Role -NoNewline
+    Write-Ui $Text $Role
+}
+
+function Write-UiProgress {
+    param([int]$Current, [int]$Total)
+    if ($Spa.Ui -and $Spa.Ui.Redirected) { return }
     if ($Total -le 0) { $Total = 1 }
-    $percent = [Math]::Min(100, [Math]::Max(0, [int](($Current / $Total) * 100)))
-    $filled = [Math]::Min($width, [Math]::Max(0, [int][Math]::Round(($percent / 100) * $width)))
-    $bar = ('█' * $filled) + ('░' * ($width - $filled))
-    $line = "  {0,-8} [{1}] {2,3}%" -f $Status, $bar, $percent
+    $percent = [int][Math]::Floor($Current * 100 / $Total)
+    $width = 30
+    $filled = [int][Math]::Floor($percent * $width / 100)
+    # 用 ASCII 画进度条：█ 在中文字体里可能是双宽，会折行。
+    $bar = ('=' * $filled) + (' ' * ($width - $filled))
+    Write-Ui ("`r  扫描中 [{0}] {1,3}%" -f $bar, $percent) Accent -NoNewline
+}
 
-    if ([Console]::IsOutputRedirected -or $env:NO_COLOR) {
-        if ($Current -eq 0 -or $Current -ge $Total) {
-            Write-Status $line Accent
+function Clear-UiProgress {
+    if ($Spa.Ui -and $Spa.Ui.Redirected) { return }
+    Write-Host ("`r" + (' ' * 50) + "`r") -NoNewline
+}
+
+# 读取一个选项。空输入或输入流结束时返回默认值（默认值应当是安全选项）。
+function Read-UiChoice {
+    param([string]$Prompt, [string[]]$Allowed, [string]$Default)
+    while ($true) {
+        Write-Ui ('  ' + $Prompt + ' ') Accent -NoNewline
+        $raw = Read-Host
+        if ($null -eq $raw) { return $Default }
+        $value = $raw.Trim().ToUpperInvariant()
+        if ($value -eq '') { return $Default }
+        if ($Allowed -contains $value) { return $value }
+        if ($Spa.Ui -and $Spa.Ui.InputRedirected) { return $Default }
+        Write-Ui ('  请输入 ' + ($Allowed -join ' / ')) Warning
+    }
+}
+
+function Wait-UiExit {
+    if ($Spa.Ui -and $Spa.Ui.InputRedirected) { return }
+    Write-Host ''
+    Write-Ui '  按回车退出...' Accent -NoNewline
+    Read-Host | Out-Null
+}
+
+# SteamSPA · 运行环境：参数、权限、STEAM 路径、路径模板、删除安全边界
+
+function ConvertFrom-SpaArguments {
+    param([object[]]$Arguments)
+
+    $options = @{
+        Risk     = @('low', 'medium', 'high')
+        Only     = @()
+        NoBackup = $false
+        NoPause  = $false
+        ScanOnly = $false
+        Help     = $false
+        Elevated = $false
+        Errors   = @()
+    }
+    $list = @($Arguments)
+
+    for ($i = 0; $i -lt $list.Count; $i++) {
+        $name = [string]$list[$i]
+        if ($name -match '^-(NoBackup|NoPause|ScanOnly|Help|Elevated)$') {
+            $options[$Matches[1]] = $true
         }
-        return
+        elseif ($name -match '^[-/](\?|h)$') {
+            $options.Help = $true
+        }
+        elseif ($name -match '^-(Risk|Only)$') {
+            $key = $Matches[1]
+            $i++
+            if ($i -ge $list.Count) { $options.Errors += "$name 缺少参数值"; break }
+            $values = @(@($list[$i]) | ForEach-Object { ([string]$_) -split ',' } |
+                    ForEach-Object { $_.Trim() } | Where-Object { $_ })
+            if ($key -eq 'Risk') {
+                $bad = @($values | Where-Object { @('low', 'medium', 'high') -notcontains $_ })
+                if ($bad.Count -gt 0 -or $values.Count -eq 0) {
+                    $options.Errors += '-Risk 只接受 low,medium,high'
+                    continue
+                }
+            }
+            $options[$key] = $values
+        }
+        else {
+            $options.Errors += "未知参数: $name"
+        }
     }
-
-    Write-Status ($line + "`r") Accent -NoNewline
-    if ($Current -ge $Total) {
-        Write-Host ''
-    }
+    return $options
 }
 
-function Write-Step {
-    param([string]$Label, [string]$Value = '', $ValueColor = 'Ink')
-    Write-Status '  ◆ ' Accent -NoNewline
-    Write-Status $Label Muted -NoNewline
-    if (-not [string]::IsNullOrWhiteSpace($Value)) {
-        Write-Status $Value $ValueColor
-    }
-    else {
-        Write-Host ''
-    }
+# 把选项还原成命令行参数（提权重启时使用）。
+function ConvertTo-SpaArgumentList {
+    param([hashtable]$Options)
+    $out = @()
+    if ($Options.Risk.Count -lt 3) { $out += '-Risk'; $out += ($Options.Risk -join ',') }
+    if ($Options.Only.Count -gt 0) { $out += '-Only'; $out += ($Options.Only -join ',') }
+    if ($Options.NoBackup) { $out += '-NoBackup' }
+    if ($Options.NoPause) { $out += '-NoPause' }
+    return $out
 }
 
-function Write-Result {
-    param([string]$Icon, [string]$Label, [string]$Text, $Color = 'Ink')
-    Write-Status ("  {0} " -f $Icon) $Color -NoNewline
-    Write-Status ("{0,-8}" -f $Label) Muted -NoNewline
-    Write-Status $Text $Color
+function Test-SpaAdmin {
+    $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Write-ProtectedItems {
-    param($Items)
-
-    if (@($Items).Count -eq 0) { return }
-
-    Write-Blank
-    Write-Status ('  🛡️ 官方文件保护：{0} 项 Valve 数字签名文件已自动跳过（Steam 官方组件，不清理）' -f @($Items).Count) Success
-    foreach ($item in @($Items) | Select-Object -Unique -Property Label) {
-        Write-Status ('        · ' + $item.Label) Muted
-    }
-    Write-Blank
-}
-
-function Get-RiskText {
-    param([string]$Risk)
-    switch ($Risk) {
-        'low' { return '低风险' }
-        'medium' { return '中风险' }
-        'high' { return '高风险' }
-        default { return $Risk }
-    }
-}
-
-function Get-RiskColor {
-    param([string]$Risk)
-    switch ($Risk) {
-        'low' { return 'Muted' }
-        'medium' { return 'Warning' }
-        'high' { return 'Danger' }
-        default { return 'Ink' }
-    }
-}
-
-function Read-CleanupConfirmation {
-    Write-Blank
-    Write-Section '✅ 确认清理？'
-    Write-Status '  输入 Y 并回车 = 确认清理      |  其他任何输入 = 取消' Muted
-    $choice = [string](Read-Host '  请选择')
-    if ($choice -and $choice.Trim().ToUpperInvariant() -eq 'Y') {
-        Write-Status '确认清理' Accent
-        return $true
-    }
-
-    Write-Status '取消' Warning
-    return $false
-}
-
-# SteamSPA source module
-# Edit this module, then run tools/build.ps1.
-
-function Resolve-Template {
-    param(
-        [string]$Text,
-        [hashtable]$Variables
-    )
-
-    $resolved = $Text
-    foreach ($key in $Variables.Keys) {
-        $resolved = $resolved.Replace('${' + $key + '}', [string]$Variables[$key])
-    }
-
-    return [Environment]::ExpandEnvironmentVariables($resolved)
-}
-
-function ConvertTo-SafeName {
-    param([string]$Text)
-    $safe = $Text
-    foreach ($char in [System.IO.Path]::GetInvalidFileNameChars()) {
-        $safe = $safe.Replace($char, '_')
-    }
-    return $safe.Trim().TrimEnd('.')
-}
-
-function Get-SteamPath {
+function Find-SteamPath {
     $candidates = New-Object System.Collections.Generic.List[string]
-    $registryPaths = @(
-        'HKCU:\Software\Valve\Steam',
-        'HKLM:\SOFTWARE\WOW6432Node\Valve\Steam',
-        'HKLM:\SOFTWARE\Valve\Steam'
-    )
-
-    foreach ($registryPath in $registryPaths) {
-        try {
-            $props = Get-ItemProperty -Path $registryPath -ErrorAction Stop
-            foreach ($name in @('SteamPath', 'InstallPath')) {
-                $path = [string]$props.$name
-                if (-not [string]::IsNullOrWhiteSpace($path)) {
-                    $candidates.Add($path)
-                }
-            }
-            $steamExe = [string]$props.SteamExe
-            if (-not [string]::IsNullOrWhiteSpace($steamExe)) {
-                $parent = Split-Path -Parent $steamExe
-                if (-not [string]::IsNullOrWhiteSpace($parent)) {
-                    $candidates.Add($parent)
-                }
-            }
+    # HKLM 的 InstallPath 大小写规范，先用它；HKCU 的 SteamPath 是全小写加正斜杠。
+    foreach ($key in @('HKLM:\SOFTWARE\WOW6432Node\Valve\Steam', 'HKLM:\SOFTWARE\Valve\Steam', 'HKCU:\Software\Valve\Steam')) {
+        $props = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
+        if (-not $props) { continue }
+        foreach ($value in @($props.SteamPath, $props.InstallPath)) {
+            if ($value) { $candidates.Add([string]$value) }
         }
-        catch {}
+        if ($props.SteamExe) { $candidates.Add((Split-Path -Parent ([string]$props.SteamExe))) }
+    }
+    foreach ($root in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+        if ($root) { $candidates.Add((Join-Path $root 'Steam')) }
     }
 
-    $defaultPaths = @(
-        (Join-Path ${env:ProgramFiles(x86)} 'Steam'),
-        (Join-Path $env:ProgramFiles 'Steam')
-    )
-    foreach ($path in $defaultPaths) {
-        if (-not [string]::IsNullOrWhiteSpace($path)) {
-            $candidates.Add($path)
-        }
+    $existing = @()
+    foreach ($path in $candidates) {
+        $full = ([string]$path).Replace('/', '\').TrimEnd('\')
+        if ($full -and (Test-Path -LiteralPath $full -PathType Container)) { $existing += $full }
     }
-
-    foreach ($path in @($candidates | Select-Object -Unique)) {
-        if ($path -and (Test-Path -LiteralPath $path -PathType Container)) {
-            return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path)
-        }
+    # 优先选真的有 steam.exe 的目录。
+    foreach ($path in $existing) {
+        if (Test-Path -LiteralPath (Join-Path $path 'steam.exe') -PathType Leaf) { return $path }
     }
-
+    if ($existing.Count -gt 0) { return $existing[0] }
     return $null
 }
 
-function Get-OSDisplayName {
+function Get-SpaOSName {
     try {
-        $cv = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction Stop
+        $cv = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction Stop
         $build = [int]$cv.CurrentBuildNumber
         $name = if ($build -ge 22000) { 'Windows 11' } else { 'Windows 10' }
-        $version = if ($cv.DisplayVersion) { $cv.DisplayVersion } elseif ($cv.ReleaseId) { $cv.ReleaseId } else { $null }
-        $ubr = if ($null -ne $cv.UBR) { ".{0}" -f $cv.UBR } else { '' }
-
-        if ($version) {
-            return ('{0} {1} (Build {2}{3})' -f $name, $version, $build, $ubr)
-        }
-        return ('{0} (Build {1}{2})' -f $name, $build, $ubr)
+        $version = if ($cv.DisplayVersion) { ' ' + $cv.DisplayVersion } elseif ($cv.ReleaseId) { ' ' + $cv.ReleaseId } else { '' }
+        $ubr = if ($null -ne $cv.UBR) { '.' + $cv.UBR } else { '' }
+        return ('{0}{1} (Build {2}{3})' -f $name, $version, $build, $ubr)
     }
     catch {
-        return [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
+        return [Environment]::OSVersion.VersionString
     }
 }
 
-function Get-Variables {
-    $steamPath = Get-SteamPath
+function Get-SpaVariables {
     return @{
         APPDATA      = $env:APPDATA
         LOCALAPPDATA = $env:LOCALAPPDATA
-        OS           = (Get-OSDisplayName)
         ProgramData  = $env:ProgramData
-        ScriptRoot   = $scriptRoot
-        SteamPath    = $steamPath
         TEMP         = $env:TEMP
         USERPROFILE  = $env:USERPROFILE
+        SteamPath    = (Find-SteamPath)
     }
 }
 
-function Read-Targets {
-    return $EmbeddedTargetsJson | ConvertFrom-Json
-}
+# 展开 ${Name} 和 %ENV%。任何变量缺失都返回 $null，而不是拼出一个
+# 残缺路径（例如没找到 STEAM 时 "${SteamPath}\hid.dll" 会变成盘符根目录下的 "\hid.dll"）。
+function Resolve-SpaTemplate {
+    param([string]$Text, [hashtable]$Variables)
 
-# SteamSPA source module
-# Edit this module, then run tools/build.ps1.
-
-function Get-DefenderPreference {
-    # Defender 模块在精简版 / Server / 第三方杀软接管时不存在。
-    # 命令缺失抛的是 CommandNotFoundException（终止性错误，-ErrorAction 压不住），必须先用 Get-Command 探测。
-    if ($script:DefenderPreferenceProbed) {
-        return $script:DefenderPreferenceCache
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $result = $Text
+    foreach ($match in [regex]::Matches($Text, '\$\{(\w+)\}')) {
+        $value = [string]$Variables[$match.Groups[1].Value]
+        if ([string]::IsNullOrWhiteSpace($value)) { return $null }
+        $result = $result.Replace($match.Value, $value.TrimEnd('\'))
     }
-
-    $script:DefenderPreferenceProbed = $true
-    $script:DefenderPreferenceCache = $null
-
-    if (-not (Get-Command -Name Get-MpPreference -ErrorAction SilentlyContinue)) {
-        return $null
-    }
-
-    try {
-        $script:DefenderPreferenceCache = Get-MpPreference -ErrorAction Stop
-    }
-    catch {
-        $script:DefenderPreferenceCache = $null
-    }
-
-    return $script:DefenderPreferenceCache
-}
-
-function Test-ValveSignedFile {
-    # 官方文件保护：Steam 根目录里的 video.dll / SDL3.dll 等是 Valve 签名的客户端组件，
-    # 规则里同名 DLL 只应命中未签名的注入副本。签名有效且签发者为 Valve 时一律不删。
-    param([string]$Path)
-
-    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
-
-    $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
-    if (@('.dll', '.exe', '.sys', '.ocx', '.drv') -notcontains $ext) { return $false }
-
-    if (-not $script:ValveSignCache) { $script:ValveSignCache = @{} }
-    $key = $Path.ToLowerInvariant()
-    if ($script:ValveSignCache.ContainsKey($key)) { return $script:ValveSignCache[$key] }
-
-    $result = $false
-    if (Get-Command -Name Get-AuthenticodeSignature -ErrorAction SilentlyContinue) {
-        try {
-            $sig = Get-AuthenticodeSignature -LiteralPath $Path -ErrorAction Stop
-            if ($sig.Status -eq 'Valid' -and $sig.SignerCertificate) {
-                if ([string]$sig.SignerCertificate.Subject -match '(^|,\s*)(O|CN)=Valve') {
-                    $result = $true
-                }
-            }
-        }
-        catch {
-            $result = $false
-        }
-    }
-
-    $script:ValveSignCache[$key] = $result
+    $result = [Environment]::ExpandEnvironmentVariables($result)
+    if ($result -match '%[^%\\]+%') { return $null }
     return $result
 }
 
-function Test-ProtectedOfficialFile {
-    param($Action, [hashtable]$Variables)
-
-    if ($Action.type -ne 'file') { return $false }
-    $path = Resolve-Template -Text $Action.path -Variables $Variables
-    return (Test-ValveSignedFile -Path $path)
+function ConvertTo-SpaComparablePath {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return '' }
+    $p = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"')).Replace('/', '\')
+    return $p.TrimEnd('\').ToLowerInvariant()
 }
 
-function Normalize-DefenderPath {
-    param([string]$Path)
+# 删除前的硬性边界：只删完整的绝对路径；绝不删系统/用户根目录、STEAM 根目录，
+# 也绝不碰游戏 (steamapps) 和存档 (userdata)。返回拒绝原因，允许则返回 $null。
+function Get-SpaUnsafePathReason {
+    param([string]$Path, [hashtable]$Variables)
 
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        return ''
+    if ($Path -notmatch '^[A-Za-z]:\\.+') { return '不是完整的绝对路径' }
+    $target = ConvertTo-SpaComparablePath $Path
+    if ($target -match '\\\.\.(\\|$)') { return '路径包含 ..' }
+
+    $steam = ConvertTo-SpaComparablePath ([string]$Variables.SteamPath)
+    $roots = @($env:SystemRoot, $env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramData,
+        $env:USERPROFILE, $env:APPDATA, $env:LOCALAPPDATA, $env:TEMP, $Variables.SteamPath)
+    if ($steam) {
+        $roots += @('config', 'bin', 'steamapps', 'userdata', 'package', 'appcache') | ForEach-Object { Join-Path $Variables.SteamPath $_ }
     }
+    foreach ($root in $roots) {
+        if ($root -and $target -eq (ConvertTo-SpaComparablePath $root)) { return '受保护的系统或 STEAM 目录' }
+    }
+    if ($target -match '^[a-z]:$') { return '磁盘根目录' }
+    if ($target -match '\\(steamapps|userdata)(\\|$)') { return '游戏或存档目录' }
+    return $null
+}
 
-    $normalized = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"'))
+# 以管理员身份在新窗口重新运行。脚本源码取自当前调用，
+# 所以 irm | iex 和本地文件两种方式都能用，不需要重新下载。
+function Start-SpaElevated {
+    param([string]$SelfText, [hashtable]$Options)
+
+    if ([string]::IsNullOrWhiteSpace($SelfText)) { return $false }
     try {
-        if (Test-Path -LiteralPath $normalized) {
-            $normalized = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($normalized)
-        }
+        $dir = Join-Path $env:TEMP 'SteamSPA'
+        [IO.Directory]::CreateDirectory($dir) | Out-Null
+        $file = Join-Path $dir ('SteamSPA-' + [guid]::NewGuid().ToString('N') + '.ps1')
+        [IO.File]::WriteAllText($file, $SelfText, (New-Object System.Text.UTF8Encoding($true)))
+
+        $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $file + '"'), '-Elevated')
+        $argList += @(ConvertTo-SpaArgumentList $Options | ForEach-Object { '"' + $_ + '"' })
+        Start-Process -FilePath 'powershell.exe' -ArgumentList $argList -Verb RunAs -ErrorAction Stop | Out-Null
+        return $true
     }
     catch {
+        return $false
     }
-
-    return $normalized.TrimEnd('\', '/') -replace '/', '\'
 }
 
-function New-ScheduledTaskSnapshotItem {
-    param(
-        [string]$Name,
-        [string]$Path,
-        $Actions
-    )
+# SteamSPA · 清理目标
+# 每种规则动作类型在这里实现两件事：
+#   Find-SpaActionTargets  把规则动作解析成本机上真实存在的目标（只读）
+#   Remove-SpaTarget       删除一个目标（之前先交给备份模块）
+# 同一个物理目标在多条规则里出现时，用 Key 去重，只显示和删除一次。
 
-    $actionItems = @()
-    foreach ($action in @($Actions)) {
-        $actionItems += [pscustomobject]@{
-            Execute   = [string]$action.Execute
-            Arguments = [string]$action.Arguments
-        }
-    }
+function Get-SpaSupportedTypes {
+    return @('file', 'registry-key', 'registry-value', 'defender-exclusion-path',
+        'defender-exclusion-extension', 'defender-exclusion-process', 'process', 'task', 'task-contains')
+}
 
+function New-SpaTarget {
+    param([string]$Type, [string]$Key, [string]$Label, [string]$Category,
+        [hashtable]$Data, [string]$State = 'present', [string]$Note = '')
     return [pscustomobject]@{
-        Name     = $Name
-        Path     = $Path
-        TaskName = $Name
-        TaskPath = $Path
-        Actions  = @($actionItems)
+        Type       = $Type
+        Key        = ($Type + '|' + $Key).ToLowerInvariant()
+        Label      = $Label
+        Category   = $Category
+        Data       = $Data
+        State      = $State      # present / protected
+        Note       = $Note
+        Recurse    = [bool]$Data.Recurse
+        RuleIds    = New-Object System.Collections.Generic.List[string]
+        Risk       = 'low'
+        Confirm    = $false
+        Status     = ''          # removed / failed / skipped
+        Message    = ''
     }
 }
 
-function ConvertTo-ScheduledTaskFolderPath {
-    param([string]$Path)
+# ---------- Defender ----------
 
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        return '\'
-    }
-
-    $trimmed = $Path.Trim()
-    if ($trimmed -eq '\') {
-        return '\'
-    }
-
-    # COM returns the full task path; Get-ScheduledTask returns the folder path.
-    $parent = Split-Path -Parent $trimmed
-    if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq '\') {
-        return '\'
-    }
-
-    return $parent.TrimEnd('\') + '\'
-}
-
-function Add-ScheduledTaskFolderSnapshot {
-    param($Folder, $Items)
-
-    foreach ($task in @($Folder.GetTasks(1))) {
-        try {
-            $definition = $task.Definition
-            $taskFolderPath = ConvertTo-ScheduledTaskFolderPath -Path ([string]$task.Path)
-            $taskItem = New-ScheduledTaskSnapshotItem -Name ([string]$task.Name) -Path $taskFolderPath -Actions $definition.Actions
-            $Items.Add($taskItem)
-        }
-        catch {
-        }
-    }
-
-    foreach ($child in @($Folder.GetFolders(1))) {
-        try {
-            Add-ScheduledTaskFolderSnapshot -Folder $child -Items $Items
-        }
-        catch {
-        }
-    }
-}
-
-function Get-ScheduledTaskSnapshot {
+function Get-SpaDefenderState {
     param([switch]$Refresh)
+    if ($Spa.Defender -and -not $Refresh) { return $Spa.Defender }
 
-    if (-not $Refresh -and $script:ScheduledTaskSnapshotLoaded) {
-        return @($script:ScheduledTaskSnapshot)
+    $state = @{ Available = $false; Readable = $false; Path = @(); Extension = @(); Process = @() }
+    if (Get-Command -Name Get-MpPreference -ErrorAction SilentlyContinue) {
+        try {
+            $pref = Get-MpPreference -ErrorAction Stop
+            $state.Available = $true
+            $state.Path = @($pref.ExclusionPath | Where-Object { $_ })
+            $state.Extension = @($pref.ExclusionExtension | Where-Object { $_ })
+            $state.Process = @($pref.ExclusionProcess | Where-Object { $_ })
+            # 非管理员读到的是 "N/A: Must be an administrator to view exclusions"。
+            $state.Readable = -not (@($state.Path + $state.Extension + $state.Process) | Where-Object { "$_" -like 'N/A*' })
+        }
+        catch {
+            # 第三方杀软接管时 Defender 不可用，跳过即可。
+        }
     }
+    $Spa.Defender = $state
+    return $state
+}
 
-    $items = New-Object System.Collections.Generic.List[object]
-    $loadedFromCom = $false
+function Find-SpaDefenderTargets {
+    param([string]$Kind, [string]$Value)
 
+    $state = Get-SpaDefenderState
+    if (-not $state.Available) { return @() }
+    if (-not $state.Readable) { $Spa.DefenderHidden = $true; return @() }
+
+    switch ($Kind) {
+        'path' {
+            $want = ConvertTo-SpaComparablePath $Value
+            $hits = @($state.Path | Where-Object { (ConvertTo-SpaComparablePath $_) -eq $want })
+            $label = 'Defender 排除路径: ' + $Value
+            $key = $want
+        }
+        'extension' {
+            $want = $Value.TrimStart('.').ToLowerInvariant()
+            $hits = @($state.Extension | Where-Object { ([string]$_).TrimStart('.').ToLowerInvariant() -eq $want })
+            $label = 'Defender 排除扩展名: .' + $want
+            $key = $want
+        }
+        'process' {
+            $want = $Value.ToLowerInvariant()
+            $hits = @($state.Process | Where-Object { ([string]$_).ToLowerInvariant() -eq $want })
+            $label = 'Defender 排除进程: ' + $Value
+            $key = $want
+        }
+    }
+    if ($hits.Count -eq 0) { return @() }
+    return (New-SpaTarget -Type ('defender-' + $Kind) -Key $key -Label $label -Category 'security' -Data @{ Kind = $Kind; Values = $hits })
+}
+
+# ---------- 计划任务 ----------
+
+function Get-SpaTaskSnapshot {
+    if ($null -ne $Spa.Tasks) { return $Spa.Tasks }
+
+    $list = New-Object System.Collections.Generic.List[object]
     try {
         $service = New-Object -ComObject Schedule.Service
         $service.Connect()
-        $rootFolder = $service.GetFolder('\')
-        Add-ScheduledTaskFolderSnapshot -Folder $rootFolder -Items $items
-        $loadedFromCom = $true
+        $folders = New-Object System.Collections.Stack
+        $folders.Push($service.GetFolder('\'))
+        while ($folders.Count -gt 0) {
+            $folder = $folders.Pop()
+            foreach ($task in @($folder.GetTasks(1))) {
+                try {
+                    $parts = @()
+                    foreach ($action in @($task.Definition.Actions)) {
+                        if ($action.Type -eq 0) { $parts += @($action.Path, $action.Arguments, $action.WorkingDirectory) }
+                    }
+                    $list.Add([pscustomobject]@{
+                            Name       = [string]$task.Name
+                            Path       = [string]$task.Path
+                            Folder     = [string]$folder.Path
+                            ActionText = [Environment]::ExpandEnvironmentVariables(($parts -join ' '))
+                        })
+                }
+                catch {}
+            }
+            foreach ($child in @($folder.GetFolders(0))) { $folders.Push($child) }
+        }
     }
     catch {
-        $loadedFromCom = $false
+        $Spa.Warnings.Add('无法读取计划任务列表，已跳过计划任务检查。')
     }
-
-    if (-not $loadedFromCom -and (Get-Command -Name Get-ScheduledTask -ErrorAction SilentlyContinue)) {
-        foreach ($task in @(Get-ScheduledTask -ErrorAction SilentlyContinue)) {
-            $taskName = [string]$task.TaskName
-            if ([string]::IsNullOrWhiteSpace($taskName)) {
-                $taskName = [string]$task.Name
-            }
-            $taskPath = [string]$task.TaskPath
-            if ([string]::IsNullOrWhiteSpace($taskPath)) {
-                $taskPath = [string]$task.Path
-            }
-            $taskFolderPath = ConvertTo-ScheduledTaskFolderPath -Path $taskPath
-            $items.Add((New-ScheduledTaskSnapshotItem -Name $taskName -Path $taskFolderPath -Actions $task.Actions))
-        }
-    }
-
-    $script:ScheduledTaskSnapshot = $items.ToArray()
-    $script:ScheduledTaskSnapshotLoaded = $true
-    return $script:ScheduledTaskSnapshot
+    $Spa.Tasks = $list.ToArray()
+    return $Spa.Tasks
 }
 
-function Find-ScheduledTasksByContains {
-    param([string]$Needle)
-
-    if ([string]::IsNullOrWhiteSpace($Needle)) {
-        return @()
-    }
-
-    return @(Get-ScheduledTaskSnapshot | Where-Object {
-        $task = $_
-        @($task.Actions) | Where-Object {
-            $expandedExecute = [Environment]::ExpandEnvironmentVariables([string]$_.Execute)
-            $expandedArguments = [Environment]::ExpandEnvironmentVariables([string]$_.Arguments)
-            ($expandedExecute -like "*$Needle*") -or
-            ($expandedArguments -like "*$Needle*")
-        }
-    })
+function New-SpaTaskTarget {
+    param($Task)
+    return New-SpaTarget -Type 'task' -Key $Task.Path -Label ('计划任务: ' + $Task.Path) -Category 'startup' -Data @{ Name = $Task.Name; Path = $Task.Path; Folder = $Task.Folder }
 }
 
-function Test-ScheduledTaskExists {
-    param([string]$Name)
+# ---------- 文件签名 ----------
 
-    if ([string]::IsNullOrWhiteSpace($Name)) {
+# Steam 根目录里的 video.dll 等是 Valve 签名的官方组件；规则里的同名 DLL
+# 只应命中未签名的注入副本。签名有效且签发者是 Valve 的一律不删。
+function Test-SpaValveSigned {
+    param([string]$Path)
+    $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
+    if (@('.dll', '.exe', '.sys') -notcontains $ext) { return $false }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    try {
+        $sig = Get-AuthenticodeSignature -LiteralPath $Path -ErrorAction Stop
+        return ($sig.Status -eq 'Valid' -and [string]$sig.SignerCertificate.Subject -match '(^|,\s*)(O|CN)="?Valve')
+    }
+    catch {
         return $false
     }
-
-    return @(Get-ScheduledTaskSnapshot | Where-Object {
-        [string]$_.Name -eq $Name
-    }).Count -gt 0
 }
 
-function Test-ActionExists {
+function Get-SpaFileCategory {
+    param([string]$Path)
+    if ($Path -match 'steam\.cfg|appdata\d*\.vdf|packageinfo\.vdf|localData\.vdf|package\\beta|opensteamtool\.toml|config\\lua') { return 'config' }
+    return 'files'
+}
+
+function Get-SpaRegistryCategory {
+    param([string]$Path)
+    if ($Path -match '\\CurrentVersion\\Run') { return 'startup' }
+    if ($Path -match 'Policies|SmartScreen|\\CI\\Policy|WindowsUpdate') { return 'security' }
+    return 'registry'
+}
+
+# ---------- 解析：规则动作 -> 本机目标 ----------
+
+function Find-SpaActionTargets {
     param($Action, [hashtable]$Variables)
 
-    switch ($Action.type) {
+    switch ([string]$Action.type) {
         'file' {
-            $path = Resolve-Template -Text $Action.path -Variables $Variables
-            if (-not (Test-Path -LiteralPath $path)) { return $false }
-            return $true
+            $path = Resolve-SpaTemplate -Text $Action.path -Variables $Variables
+            if (-not $path -or -not (Test-Path -LiteralPath $path)) { return @() }
+            $data = @{ Path = $path; Recurse = [bool]$Action.recurse }
+            $target = New-SpaTarget -Type 'file' -Key $path -Label $path -Category (Get-SpaFileCategory $path) -Data $data
+            $reason = Get-SpaUnsafePathReason -Path $path -Variables $Variables
+            if ($reason) {
+                $target.State = 'protected'; $target.Note = $reason
+            }
+            elseif (Test-SpaValveSigned $path) {
+                $target.State = 'protected'; $target.Note = 'Valve 官方签名文件'
+            }
+            return $target
         }
         'registry-key' {
-            return [bool](Test-Path -Path $Action.path)
+            $path = [string]$Action.path
+            if (-not (Test-Path -LiteralPath $path)) { return @() }
+            return (New-SpaTarget -Type 'registry-key' -Key $path -Label $path -Category (Get-SpaRegistryCategory $path) -Data @{ Path = $path; Recurse = [bool]$Action.recurse })
         }
         'registry-value' {
-            if (-not (Test-Path -Path $Action.path)) { return $false }
-            return $null -ne (Get-ItemProperty -Path $Action.path -Name $Action.name -ErrorAction SilentlyContinue)
+            $path = [string]$Action.path
+            $name = [string]$Action.name
+            $props = Get-ItemProperty -LiteralPath $path -ErrorAction SilentlyContinue
+            if (-not $props -or -not ($props.PSObject.Properties.Name -contains $name)) { return @() }
+            return (New-SpaTarget -Type 'registry-value' -Key ($path + '|' + $name) -Label ($path + ' : ' + $name) -Category (Get-SpaRegistryCategory $path) -Data @{ Path = $path; Name = $name })
         }
         'defender-exclusion-path' {
-            $pref = Get-DefenderPreference
-            if (-not $pref) { return $false }
-            $path = Resolve-Template -Text $Action.path -Variables $Variables
-            $target = Normalize-DefenderPath -Path $path
-            foreach ($existing in @($pref.ExclusionPath)) {
-                if ((Normalize-DefenderPath -Path $existing) -eq $target) {
-                    return $true
-                }
-            }
-            return $false
+            $path = Resolve-SpaTemplate -Text $Action.path -Variables $Variables
+            if (-not $path) { return @() }
+            return Find-SpaDefenderTargets -Kind 'path' -Value $path
         }
-        'defender-exclusion-extension' {
-            $pref = Get-DefenderPreference
-            return $pref -and ($pref.ExclusionExtension -contains $Action.name)
-        }
-        'defender-exclusion-process' {
-            $pref = Get-DefenderPreference
-            return $pref -and ($pref.ExclusionProcess -contains $Action.name)
-        }
+        'defender-exclusion-extension' { return Find-SpaDefenderTargets -Kind 'extension' -Value ([string]$Action.name) }
+        'defender-exclusion-process' { return Find-SpaDefenderTargets -Kind 'process' -Value ([string]$Action.name) }
         'process' {
-            return $null -ne (Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($Action.name)) -ErrorAction SilentlyContinue)
-        }
-        'service' {
-            return $null -ne (Get-Service -Name $Action.name -ErrorAction SilentlyContinue)
+            $name = [IO.Path]::GetFileNameWithoutExtension([string]$Action.name)
+            if (-not (Get-Process -Name $name -ErrorAction SilentlyContinue)) { return @() }
+            return (New-SpaTarget -Type 'process' -Key $name -Label ('进程: ' + $name) -Category 'process' -Data @{ Name = $name })
         }
         'task' {
-            return (Test-ScheduledTaskExists -Name $Action.name)
+            $name = [string]$Action.name
+            return @(Get-SpaTaskSnapshot | Where-Object { $_.Name -eq $name } | ForEach-Object { New-SpaTaskTarget $_ })
         }
         'task-contains' {
-            $needle = Resolve-Template -Text $Action.contains -Variables $Variables
-            return (@(Find-ScheduledTasksByContains -Needle $needle).Count -gt 0)
+            $needle = Resolve-SpaTemplate -Text $Action.contains -Variables $Variables
+            if (-not $needle) { return @() }
+            return @(Get-SpaTaskSnapshot | Where-Object { $_.ActionText.IndexOf($needle, [StringComparison]::OrdinalIgnoreCase) -ge 0 } | ForEach-Object { New-SpaTaskTarget $_ })
         }
-        default {
-            return $false
+    }
+    return @()
+}
+
+# ---------- 删除 ----------
+
+function Get-SpaErrorText {
+    param($ErrorRecord)
+    $ex = $ErrorRecord.Exception
+    while ($ex.InnerException) { $ex = $ex.InnerException }
+    if ($ex -is [UnauthorizedAccessException] -or $ex -is [Security.SecurityException]) {
+        return '权限不足或被杀毒软件拦截'
+    }
+    if ($ex -is [IO.IOException]) { return '文件正在被占用' }
+    return $ex.Message.Trim()
+}
+
+function Set-SpaResult {
+    param($Target, [string]$Status, [string]$Message = '')
+    $Target.Status = $Status
+    $Target.Message = $Message
+}
+
+function Remove-SpaTarget {
+    param($Target, [hashtable]$Backup, [hashtable]$Variables)
+
+    $d = $Target.Data
+    try {
+        if ($Target.Type -eq 'file') {
+            # 再次检查边界，防止规则或变量在扫描后被篡改。
+            $reason = Get-SpaUnsafePathReason -Path $d.Path -Variables $Variables
+            if ($reason) { return Set-SpaResult $Target 'skipped' $reason }
+            if (-not (Test-Path -LiteralPath $d.Path)) { return Set-SpaResult $Target 'skipped' '已不存在' }
+            $isDir = Test-Path -LiteralPath $d.Path -PathType Container
+            if ($isDir -and -not $Target.Recurse -and @(Get-ChildItem -LiteralPath $d.Path -Force -ErrorAction SilentlyContinue).Count -gt 0) {
+                return Set-SpaResult $Target 'skipped' '目录非空，规则未允许整目录删除'
+            }
         }
+        if ($Target.Type -eq 'registry-key' -and -not $Target.Recurse) {
+            $key = Get-Item -LiteralPath $d.Path -ErrorAction SilentlyContinue
+            if ($key -and $key.SubKeyCount -gt 0) { return Set-SpaResult $Target 'skipped' '含子项，规则未允许整项删除' }
+        }
+
+        if (-not (Save-SpaBackupItem -Backup $Backup -Target $Target)) {
+            return Set-SpaResult $Target 'failed' '备份失败，为安全起见未删除'
+        }
+
+        switch ($Target.Type) {
+            'file' {
+                Remove-Item -LiteralPath $d.Path -Force -Recurse:$Target.Recurse -ErrorAction Stop
+                if (Test-Path -LiteralPath $d.Path) { return Set-SpaResult $Target 'failed' '文件正在被占用' }
+            }
+            'registry-key' {
+                Remove-Item -LiteralPath $d.Path -Force -Recurse -ErrorAction Stop
+            }
+            'registry-value' {
+                Remove-ItemProperty -LiteralPath $d.Path -Name $d.Name -Force -ErrorAction Stop
+            }
+            { $_ -like 'defender-*' } {
+                switch ($d.Kind) {
+                    'path' { Remove-MpPreference -ExclusionPath $d.Values -ErrorAction Stop }
+                    'extension' { Remove-MpPreference -ExclusionExtension $d.Values -ErrorAction Stop }
+                    'process' { Remove-MpPreference -ExclusionProcess $d.Values -ErrorAction Stop }
+                }
+            }
+            'process' {
+                Get-Process -Name $d.Name -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction Stop
+                Start-Sleep -Milliseconds 300
+                if (Get-Process -Name $d.Name -ErrorAction SilentlyContinue) { return Set-SpaResult $Target 'failed' '进程未能结束' }
+            }
+            'task' {
+                $service = New-Object -ComObject Schedule.Service
+                $service.Connect()
+                $service.GetFolder($d.Folder).DeleteTask($d.Name, 0)
+            }
+        }
+        Set-SpaResult $Target 'removed'
+    }
+    catch {
+        Set-SpaResult $Target 'failed' (Get-SpaErrorText $_)
     }
 }
 
-# SteamSPA source module
-# Edit this module, then run tools/build.ps1.
+# SteamSPA · 清理前备份
+# 备份目录：%LOCALAPPDATA%\SteamSPA\backups\<时间>\
+#   files\C\...       被删文件/目录的原样副本
+#   registry\*.reg    被删注册表项（或值所在项）的 reg export
+#   tasks\*.xml       被删计划任务的定义
+#   manifest.json     清单
+#   restore.ps1       一键恢复（文件、注册表、计划任务；Defender 排除项只记录不恢复）
 
-function Remove-DefenderExclusion {
-    param(
-        [ValidateSet('path', 'extension', 'process')][string]$Kind,
-        [string]$Value
-    )
-
-    if (-not (Get-Command -Name Remove-MpPreference -ErrorAction SilentlyContinue)) {
-        return $false
+function New-SpaBackup {
+    param([bool]$Enabled)
+    $base = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $env:TEMP }
+    return @{
+        Enabled  = $Enabled
+        Root     = Join-Path $base ('SteamSPA\backups\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        Entries  = New-Object System.Collections.Generic.List[object]
+        Exported = @{}
+        Counter  = 0
     }
+}
 
+function Get-SpaBackupFile {
+    param([hashtable]$Backup, [string]$Folder, [string]$Extension)
+    $Backup.Counter++
+    $dir = Join-Path $Backup.Root $Folder
+    [IO.Directory]::CreateDirectory($dir) | Out-Null
+    return Join-Path $Folder ('{0:D3}{1}' -f $Backup.Counter, $Extension)
+}
+
+function Export-SpaRegistryKey {
+    param([hashtable]$Backup, [string]$Path, [string]$Label)
+    $key = $Path -replace '^(HK[A-Z_]+):\\?', '$1\'
+    if ($Backup.Exported.ContainsKey($key)) { return $true }
+    $relative = Get-SpaBackupFile -Backup $Backup -Folder 'registry' -Extension '.reg'
+    & reg.exe export $key (Join-Path $Backup.Root $relative) /y 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    $Backup.Exported[$key] = $true
+    $Backup.Entries.Add([ordered]@{ type = 'registry'; label = $Label; key = $key; file = $relative })
+    return $true
+}
+
+# 返回 $true 表示可以继续删除（已备份，或无需/未启用备份）。
+function Save-SpaBackupItem {
+    param([hashtable]$Backup, $Target)
+    if (-not $Backup.Enabled) { return $true }
+
+    $d = $Target.Data
     try {
-        switch ($Kind) {
-            'path' { Remove-MpPreference -ExclusionPath $Value -ErrorAction Stop }
-            'extension' { Remove-MpPreference -ExclusionExtension $Value -ErrorAction Stop }
-            'process' { Remove-MpPreference -ExclusionProcess $Value -ErrorAction Stop }
+        switch -Wildcard ($Target.Type) {
+            'file' {
+                $relative = Join-Path 'files' ($d.Path -replace '^([A-Za-z]):\\', '$1\')
+                $dest = Join-Path $Backup.Root $relative
+                [IO.Directory]::CreateDirectory((Split-Path -Parent $dest)) | Out-Null
+                Copy-Item -LiteralPath $d.Path -Destination $dest -Recurse -Force -ErrorAction Stop
+                $Backup.Entries.Add([ordered]@{ type = 'file'; label = $Target.Label; source = $d.Path; file = $relative })
+            }
+            'registry-*' {
+                if (-not (Export-SpaRegistryKey -Backup $Backup -Path $d.Path -Label $Target.Label)) { return $false }
+            }
+            'defender-*' {
+                $Backup.Entries.Add([ordered]@{ type = 'defender'; label = $Target.Label; kind = $d.Kind; values = @($d.Values) })
+            }
+            'task' {
+                $service = New-Object -ComObject Schedule.Service
+                $service.Connect()
+                $xml = $service.GetFolder($d.Folder).GetTask($d.Name).Xml
+                $relative = Get-SpaBackupFile -Backup $Backup -Folder 'tasks' -Extension '.xml'
+                [IO.File]::WriteAllText((Join-Path $Backup.Root $relative), $xml, [Text.Encoding]::Unicode)
+                $Backup.Entries.Add([ordered]@{ type = 'task'; label = $Target.Label; name = $d.Path; file = $relative })
+            }
         }
         return $true
     }
@@ -1832,556 +1792,436 @@ function Remove-DefenderExclusion {
     }
 }
 
-function Remove-Action {
-    param(
-        $Action,
-        [hashtable]$Variables,
-        [string]$BackupRoot,
-        [switch]$NoBackup
-    )
+function Complete-SpaBackup {
+    param([hashtable]$Backup)
+    if (-not $Backup.Enabled -or $Backup.Entries.Count -eq 0) { return $null }
 
-    switch ($Action.type) {
-        'file' {
-            $path = Resolve-Template -Text $Action.path -Variables $Variables
-            if (-not (Test-Path -LiteralPath $path)) { return 'skipped' }
-            if (Test-ValveSignedFile -Path $path) { return 'protected' }
-            if (-not $NoBackup) {
-                $backupName = Join-Path $BackupRoot (ConvertTo-SafeName $path)
-                $parent = Split-Path -Parent $backupName
-                if ($parent -and -not (Test-Path -LiteralPath $parent)) {
-                    New-Item -ItemType Directory -Path $parent -Force | Out-Null
-                }
-                Copy-Item -LiteralPath $path -Destination $backupName -Recurse -Force -ErrorAction SilentlyContinue
-            }
-            Remove-Item -LiteralPath $path -Force -Recurse:([bool]$Action.recurse)
-            return 'removed'
-        }
-        'registry-key' {
-            if (Test-Path -Path $Action.path) {
-                Remove-Item -Path $Action.path -Force -Recurse:([bool]$Action.recurse)
-                return 'removed'
-            }
-            return 'skipped'
-        }
-        'registry-value' {
-            if ((Test-Path -Path $Action.path) -and ($null -ne (Get-ItemProperty -Path $Action.path -Name $Action.name -ErrorAction SilentlyContinue))) {
-                Remove-ItemProperty -Path $Action.path -Name $Action.name -Force
-                return 'removed'
-            }
-            return 'skipped'
-        }
-        'defender-exclusion-path' {
-            $pref = Get-DefenderPreference
-            if (-not $pref) { return 'skipped' }
-            $path = Resolve-Template -Text $Action.path -Variables $Variables
-            $target = Normalize-DefenderPath -Path $path
-            $removed = $false
-            foreach ($existing in @($pref.ExclusionPath)) {
-                if ((Normalize-DefenderPath -Path $existing) -eq $target) {
-                    if (Remove-DefenderExclusion -Kind 'path' -Value $existing) { $removed = $true }
-                }
-            }
-            if ($removed) { return 'removed' }
-            return 'skipped'
-        }
-        'defender-exclusion-extension' {
-            if (-not (Remove-DefenderExclusion -Kind 'extension' -Value $Action.name)) { return 'skipped' }
-            return 'removed'
-        }
-        'defender-exclusion-process' {
-            if (-not (Remove-DefenderExclusion -Kind 'process' -Value $Action.name)) { return 'skipped' }
-            return 'removed'
-        }
-        'process' {
-            Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($Action.name)) -ErrorAction SilentlyContinue | Stop-Process -Force
-            return 'removed'
-        }
-        'service' {
-            Stop-Service -Name $Action.name -Force
-            return 'removed'
-        }
-        'task' {
-            Unregister-ScheduledTask -TaskName $Action.name -Confirm:$false
-            Get-ScheduledTaskSnapshot -Refresh | Out-Null
-            return 'removed'
-        }
-        'task-contains' {
-            $needle = Resolve-Template -Text $Action.contains -Variables $Variables
-            $matches = @(Find-ScheduledTasksByContains -Needle $needle)
-            foreach ($task in $matches) {
-                Unregister-ScheduledTask -TaskName $task.Name -TaskPath $task.Path -Confirm:$false
-            }
-            if ($matches.Count -gt 0) {
-                Get-ScheduledTaskSnapshot -Refresh | Out-Null
-                return 'removed'
-            }
-            return 'skipped'
-        }
-        default {
-            throw (('不支持的动作类型: ') + $Action.type)
-        }
+    $utf8 = New-Object System.Text.UTF8Encoding($true)
+    $manifest = [ordered]@{
+        tool      = 'SteamSPA'
+        version   = $SteamSPAReleaseVersion
+        createdAt = (Get-Date).ToString('o')
+        entries   = $Backup.Entries.ToArray()   # PS 5.1 下 @(List) 放进 [ordered] 会抛 Argument types do not match
     }
+    [IO.File]::WriteAllText((Join-Path $Backup.Root 'manifest.json'), ($manifest | ConvertTo-Json -Depth 5), $utf8)
+    [IO.File]::WriteAllText((Join-Path $Backup.Root 'restore.ps1'), (Get-SpaRestoreScript), $utf8)
+    return $Backup.Root
 }
 
-function Format-ActionLabel {
-    param($Action, [hashtable]$Variables)
-
-    switch ($Action.type) {
-        'file' { return Resolve-Template -Text $Action.path -Variables $Variables }
-        'registry-key' { return $Action.path }
-        'registry-value' { return "$($Action.path)\$($Action.name)" }
-        'defender-exclusion-path' {
-            $path = Resolve-Template -Text $Action.path -Variables $Variables
-            return $path
-        }
-        'defender-exclusion-extension' { return "扩展名: $($Action.name)" }
-        'defender-exclusion-process' { return "排除进程: $($Action.name)" }
-        'process' { return "进程: $($Action.name)" }
-        'service' { return "服务: $($Action.name)" }
-        'task' { return "计划任务: $($Action.name)" }
-        'task-contains' { return "计划任务包含: $(Resolve-Template -Text $Action.contains -Variables $Variables)" }
-        default { return $Action.type }
-    }
-}
-
-function Get-ActionCategory {
-    param($Action)
-
-    switch ($Action.type) {
-        'file' {
-            $p = [string]$Action.path
-            if ($p -match 'steam\.cfg|appdata\d*\.vdf|packageinfo\.vdf|localData\.vdf|package\\beta|opensteamtool\.toml|config\\lua') { return 'config' }
-            return 'files'
-        }
-        'registry-key' { return 'registry' }
-        'registry-value' { return 'registry' }
-        'defender-exclusion-path' { return 'security' }
-        'defender-exclusion-extension' { return 'security' }
-        'defender-exclusion-process' { return 'security' }
-        'process' { return 'process' }
-        'service' { return 'startup' }
-        'task' { return 'startup' }
-        'task-contains' { return 'startup' }
-        default { return 'other' }
-    }
-}
-
-function Get-ActionIdentity {
-    param($Action, [hashtable]$Variables)
-
-    $target = [string](Format-ActionLabel -Action $Action -Variables $Variables)
-    $target = $target.Trim().TrimEnd('\', '/')
-    return ([string]$Action.type).ToLowerInvariant() + '|' + $target.ToLowerInvariant()
-}
-
-function Get-CategoryTitle {
-    param([string]$Category)
-
-    switch ($Category) {
-        'files' { return '文件' }
-        'config' { return '配置' }
-        'registry' { return '注册表' }
-        'startup' { return '启动项' }
-        'security' { return '安全项' }
-        'process' { return '进程' }
-        default { return '其他' }
-    }
-}
-
-# SteamSPA source module
-# Edit this module, then run tools/build.ps1.
-
-function Get-FakeLibraryHistoryClues {
-    $historyPaths = New-Object System.Collections.Generic.List[string]
-
+function Get-SpaRestoreScript {
+    return @'
+# SteamSPA 恢复脚本：把本目录里备份的文件、注册表、计划任务放回原处。
+# 用法：右键 -> 使用 PowerShell 运行（需要管理员权限恢复系统注册表和计划任务）。
+# Defender 排除项不会自动恢复，清单里有记录，如确有需要请手动添加。
+$base = Split-Path -Parent $MyInvocation.MyCommand.Path
+$manifest = Get-Content -LiteralPath (Join-Path $base 'manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+foreach ($e in @($manifest.entries)) {
     try {
-        $psReadLineOption = Get-PSReadLineOption -ErrorAction SilentlyContinue
-        if ($psReadLineOption -and -not [string]::IsNullOrWhiteSpace($psReadLineOption.HistorySavePath)) {
-            $historyPaths.Add($psReadLineOption.HistorySavePath)
+        if ($e.type -eq 'file') {
+            if (Test-Path -LiteralPath $e.source) { Write-Host ('已存在，跳过: ' + $e.source); continue }
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $e.source) | Out-Null
+            Copy-Item -LiteralPath (Join-Path $base $e.file) -Destination $e.source -Recurse -Force -ErrorAction Stop
         }
+        elseif ($e.type -eq 'registry') {
+            & reg.exe import (Join-Path $base $e.file) 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'reg import 失败' }
+        }
+        elseif ($e.type -eq 'task') {
+            & schtasks.exe /Create /TN $e.name /XML (Join-Path $base $e.file) /F 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'schtasks 失败' }
+        }
+        else { Write-Host ('未自动恢复: ' + $e.label); continue }
+        Write-Host ('已恢复: ' + $e.label)
     }
     catch {
+        Write-Host ('恢复失败: ' + $e.label + ' - ' + $_.Exception.Message) -ForegroundColor Red
+    }
+}
+Read-Host '完成，按回车退出' | Out-Null
+'@
+}
+
+# SteamSPA · PowerShell 历史线索
+# 只在本机显示，不上传，也不作为删除依据。
+
+function Get-SpaHistoryLines {
+    $files = @()
+    try {
+        $option = Get-PSReadLineOption -ErrorAction Stop
+        if ($option.HistorySavePath) { $files += $option.HistorySavePath }
+    }
+    catch {}
+    $dir = Join-Path $env:APPDATA 'Microsoft\Windows\PowerShell\PSReadLine'
+    if (Test-Path -LiteralPath $dir) {
+        $files += @(Get-ChildItem -LiteralPath $dir -Filter '*_history.txt' -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
     }
 
-    $fallbackPaths = @(
-        (Join-Path $env:APPDATA 'Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt'),
-        (Join-Path $env:APPDATA 'Microsoft\Windows\PowerShell\PSReadLine\Visual Studio Code Host_history.txt'),
-        (Join-Path $env:APPDATA 'Microsoft\Windows\PowerShell\PSReadLine\Windows PowerShell ISE Host_history.txt')
+    $lines = @()
+    foreach ($file in @($files | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath $file -PathType Leaf) {
+            $lines += @(Get-Content -LiteralPath $file -Encoding UTF8 -ErrorAction SilentlyContinue)
+        }
+    }
+    return $lines
+}
+
+# 一行算线索的条件（任一）：
+#   1. 命中已知假入库域名/IP/文件特征；
+#   2. 出现非 Valve 官方的 steam*.xxx 域名（steamfn.com、steamcc.cn 这类）；
+#   3. "下载并直接执行"且目标是不带 https:// 的裸域名/IP（irm xxx.run | iex 是假入库的典型写法，
+#      正规安装命令一般是完整 https 地址，不算线索）。
+# 只命中 irm 之类的单词不算（"confirm" 里也有 irm）。
+function Find-SpaHistoryClues {
+    param([string[]]$Lines, [int]$Limit = 15)
+
+    $indicators = @(
+        'steam.run', 'steam.work', 'steam.icu', 'steam-run.com', 'cdks.run', 'ruku.run', 'steamcdkey.cn',
+        'steamcn.cc', 'steamcc.cn', 'vfc88.cn', 'vfc77.cn', 'tfdl.net', 'siyecao', 'wanzi666', 'kyeamu',
+        '121.41.99.14', '139.196.146.200', '47.100.121.251', '47.98.148.132', 'opensteamtool',
+        'keymanifest', 'SdkoInjector', 'sdko.dll', 'SDL3_voder', 'sdl3_setup', 'csu_install', 'CSU_DIVA_HOST',
+        'steamcdk', 'Steamtools', 'lanzou'
     )
-    foreach ($path in $fallbackPaths) {
-        if (-not [string]::IsNullOrWhiteSpace($path)) {
-            $historyPaths.Add($path)
-        }
-    }
+    $trusted = @('ZERONE2077/SteamSPA')
+    $steamDomain = '\bsteam[\w-]*\.(run|cn|cc|icu|work|top|xyz|com|net|vip|fun|site|shop)\b'
+    $valveDomain = '\bsteam(powered|community|static|content|games|usercontent|server)\.(com|net)\b'
+    $bareFetch = '\b(irm|iwr|Invoke-RestMethod|Invoke-WebRequest)\s+["'']?(?!https?://)[\w-]+(\.[\w-]+)+'
 
-    $suspiciousKeywords = @(
-        'irm',
-        'iwr',
-        'iex',
-        'Invoke-RestMethod',
-        'Invoke-WebRequest',
-        'steam.run',
-        'steam.work',
-        'cdk.ruku.run',
-        'ruku.run',
-        'steamcdkey.cn',
-        'steamcn.cc',
-        'steamcc.cn',
-        'SDL3_voder',
-        'sdl3_setup',
-        'csu_install',
-        'csu_lz_',
-        'CSU_DIVA_HOST',
-        'vfc88.cn',
-        'vfc77.cn',
-        '121.41.99.14',
-        '139.196.146.200',
-        'wanzi666',
-        'kyeamu',
-        'keymanifest',
-        'sdko',
-        'SdkoInjector',
-        'stats.opensteamtool.com',
-        'siyecao',
-        'tfdl.net',
-        'steamcdk',
-        'steam-',
-        'gitee.com',
-        'githubusercontent.com',
-        'lanzou',
-        'lanzoui',
-        'lanzoup',
-        'Steamtools',
-        'Stool'
-    )
+    $clues = New-Object System.Collections.Generic.List[string]
+    foreach ($line in @($Lines)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $isTrusted = $false
+        foreach ($t in $trusted) { if ($line.IndexOf($t, [StringComparison]::OrdinalIgnoreCase) -ge 0) { $isTrusted = $true } }
+        if ($isTrusted) { continue }
 
-    $trustedPatterns = @(
-        'raw.githubusercontent.com/ZERONE2077/SteamSPA',
-        'cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA'
-    )
-
-    $results = New-Object System.Collections.Generic.List[string]
-
-    foreach ($historyPath in @($historyPaths | Select-Object -Unique)) {
-        if ([string]::IsNullOrWhiteSpace($historyPath) -or -not (Test-Path -LiteralPath $historyPath)) {
-            continue
-        }
-
-        $lines = @(Get-Content -LiteralPath $historyPath -Encoding UTF8 -ErrorAction SilentlyContinue)
-        foreach ($line in $lines) {
-            if ([string]::IsNullOrWhiteSpace($line)) { continue }
-
-            $isSuspicious = $false
-            foreach ($keyword in $suspiciousKeywords) {
-                if ($line.IndexOf($keyword, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
-                    $isSuspicious = $true
-                    break
-                }
+        $hit = ($line -match $bareFetch) -or (($line -replace $valveDomain, '') -match $steamDomain)
+        if (-not $hit) {
+            foreach ($i in $indicators) {
+                if ($line.IndexOf($i, [StringComparison]::OrdinalIgnoreCase) -ge 0) { $hit = $true; break }
             }
-            if (-not $isSuspicious) { continue }
-
-            $urlMatches = [regex]::Matches($line, '(?i)https?://[^\s''")<>|]+')
-            if ($urlMatches.Count -gt 0) {
-                foreach ($match in $urlMatches) {
-                    $url = $match.Value.Trim()
-                    $url = $url -replace '([?&](?:token|access_token|auth|key|pwd|password|sign|signature)=)[^&\s]+', '$1<redacted>'
-                    $url = $url.TrimEnd('.', ',', ';')
-                    $isTrusted = $false
-                    foreach ($trustedPattern in $trustedPatterns) {
-                        if ($url.IndexOf($trustedPattern, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
-                            $isTrusted = $true
-                            break
-                        }
-                    }
-                    if ($isTrusted) { continue }
-                    if (-not [string]::IsNullOrWhiteSpace($url)) {
-                        $results.Add($url)
-                    }
-                }
-                continue
-            }
-
-            $shortIrm = [regex]::Match($line, '(?i)\b(?:irm|iwr|Invoke-RestMethod|Invoke-WebRequest)\s+([A-Za-z0-9][A-Za-z0-9._:/-]{2,80})')
-            if ($shortIrm.Success) {
-                $results.Add(($shortIrm.Value -replace '\s+', ' ').Trim())
-                continue
-            }
-
-            $trimmed = ($line -replace '\s+', ' ').Trim()
-            if ($trimmed.Length -gt 140) {
-                $trimmed = $trimmed.Substring(0, 137) + '...'
-            }
-            $results.Add($trimmed)
         }
-    }
+        if (-not $hit) { continue }
 
-    return @($results | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
-}
-
-function Write-FakeLibraryHistoryClues {
-    param([string[]]$Clues)
-
-    if (-not $Clues -or $Clues.Count -eq 0) {
-        return
-    }
-
-    Write-Section '🧭 历史线索'
-    Write-Status '  发现以下可能的假入库脚本线索（仅本机显示，不会上传）：' WarningSoft
-    $index = 1
-    foreach ($clue in @($Clues)) {
-        Write-Status ('    {0}. ' -f $index) Muted -NoNewline
-        Write-Status $clue Path
-        $index++
-    }
-    Write-Blank
-}
-
-# Application entry point
-Clear-Host
-$host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具'
-Write-Blank
-Write-GradientText '  ███████ ████████ ███████  █████  ███    ███     ███████ ██████   █████  '
-Write-GradientText '  ██         ██    ██      ██   ██ ████  ████     ██      ██   ██ ██   ██ '
-Write-GradientText '  ███████    ██    █████   ███████ ██ ████ ██     ███████ ██████  ███████ '
-Write-GradientText '       ██    ██    ██      ██   ██ ██  ██  ██          ██ ██      ██   ██ '
-Write-GradientText '  ███████    ██    ███████ ██   ██ ██      ██     ███████ ██      ██   ██ '
-Write-Blank
-Write-Status '  假入库清理/专杀工具：秒杀各种注入DLL/STEAM配置/注册表/启动项/系统服务/安全策略/后台进程等' Muted
-Write-Status '  作者：万能小哥' Muted
-Write-Status ('  最后更新：' + $SteamSPAUpdatedAt + ' · 版本：' + $SteamSPAReleaseVersion) Muted
-
-$variables = Get-Variables
-$targets = Read-Targets
-$backupRoot = Join-Path $scriptRoot (Join-Path 'temp\backups' (Get-Date -Format 'yyyyMMdd-HHmmss'))
-$logRoot = Join-Path $scriptRoot 'temp\logs'
-
-$report = [ordered]@{
-    startedAt = (Get-Date).ToString('o')
-    mode      = 'scan-confirm-clean'
-    targets   = @()
-    summary   = [ordered]@{
-        detected = 0
-        removed  = 0
-        failed   = 0
-        skipped  = 0
-        protected = 0
-    }
-}
-
-$rules = @($targets.rules) | Where-Object {
-    ($_.enabled -ne $false) -and
-    ($Risk -contains $_.risk) -and
-    (-not $Only -or $Only -contains $_.id)
-}
-
-$detectedItems = @()
-$protectedItems = @()
-
-$scanIdentities = New-Object System.Collections.Generic.List[string]
-$scanIdentitySet = @{}
-foreach ($rule in $rules) {
-    foreach ($action in @($rule.actions)) {
-        $identity = Get-ActionIdentity -Action $action -Variables $variables
-        if (-not $scanIdentitySet.ContainsKey($identity)) {
-            $scanIdentitySet[$identity] = $true
-            $scanIdentities.Add($identity)
-        }
-    }
-}
-
-$scanTotal = [Math]::Max(1, $scanIdentities.Count)
-$scanCurrent = 0
-$scanResultCache = @{}
-Write-Section '🖥️ 本机信息'
-Write-KeyValue '操作系统' $variables.OS
-if ($variables.SteamPath) {
-    Write-KeyValue 'STEAM路径' $variables.SteamPath
-}
-else {
-    Write-KeyValue 'STEAM路径' '未检测到' Warning
-}
-
-$historyClues = Get-FakeLibraryHistoryClues
-Write-FakeLibraryHistoryClues -Clues $historyClues
-
-Write-Section '🔍 扫描'
-Write-ProgressLine -Current 0 -Total $scanTotal -Status '扫描中'
-
-foreach ($rule in $rules) {
-    $ruleReport = [ordered]@{
-        id      = $rule.id
-        title   = $rule.title
-        risk    = $rule.risk
-        actions = @()
-    }
-
-    foreach ($action in @($rule.actions)) {
-        $label = Format-ActionLabel -Action $action -Variables $variables
-        $identity = Get-ActionIdentity -Action $action -Variables $variables
-        if ($scanResultCache.ContainsKey($identity)) {
-            $cachedResult = $scanResultCache[$identity]
-            $exists = [bool]$cachedResult.Exists
-            $protected = [bool]$cachedResult.Protected
+        $urls = @([regex]::Matches($line, '(?i)https?://[^\s''"()<>|;“”‘’，]+') | ForEach-Object { $_.Value.TrimEnd('.', ',') })
+        if ($urls.Count -gt 0) {
+            foreach ($url in $urls) {
+                $clues.Add(($url -replace '(?i)([?&](token|access_token|auth|key|pwd|password|sign|signature)=)[^&]+', '$1***'))
+            }
         }
         else {
-            $exists = Test-ActionExists -Action $action -Variables $variables
-            $protected = $exists -and (Test-ProtectedOfficialFile -Action $action -Variables $variables)
-            $scanResultCache[$identity] = [pscustomobject]@{
-                Exists    = [bool]$exists
-                Protected = [bool]$protected
-            }
-            $scanCurrent++
-            if ($scanCurrent -lt $scanTotal) {
-                Write-ProgressLine -Current $scanCurrent -Total $scanTotal -Status '扫描中'
-            }
-        }
-
-        if ($exists -and -not $protected) {
-            $detectedItems += [pscustomobject]@{
-                RuleId = $rule.id
-                RuleTitle = $rule.title
-                Risk = $rule.risk
-                Confirm = ($rule.confirm -eq $true)
-                Action = $action
-                Label = $label
-                Category = (Get-ActionCategory -Action $action)
-            }
-        }
-        elseif ($protected) {
-            $protectedItems += [pscustomobject]@{
-                RuleId = $rule.id
-                RuleTitle = $rule.title
-                Label = $label
-            }
-        }
-
-        $ruleReport.actions += [ordered]@{
-            type   = $action.type
-            target = $label
-            exists = [bool]$exists
+            $text = ($line -replace '\s+', ' ').Trim()
+            if ($text.Length -gt 120) { $text = $text.Substring(0, 117) + '...' }
+            $clues.Add($text)
         }
     }
 
-    $report.targets += $ruleReport
+    # 历史文件按时间顺序追加，保留最近的若干条。
+    $unique = @($clues | Select-Object -Unique)
+    if ($unique.Count -gt $Limit) { $unique = $unique[($unique.Count - $Limit)..($unique.Count - 1)] }
+    return $unique
 }
 
-Write-ProgressLine -Current $scanTotal -Total $scanTotal -Status '扫描完成'
+# SteamSPA · 主流程：环境 -> 扫描 -> 展示 -> 确认 -> 备份并清理 -> 汇总
 
-# Overlapping rules can resolve to the same physical target. Show and remove it once.
-$uniqueItems = @()
-$itemIndex = @{}
-foreach ($item in $detectedItems) {
-    $key = Get-ActionIdentity -Action $item.Action -Variables $variables
-    if ($itemIndex.ContainsKey($key)) {
-        $existing = $itemIndex[$key]
-        if ($item.Action.recurse -eq $true) {
-            $existing.Action | Add-Member -NotePropertyName recurse -NotePropertyValue $true -Force
-        }
-        continue
-    }
-    $itemIndex[$key] = $item
-    $uniqueItems += $item
+function Show-SpaHelp {
+    Write-Ui '用法：uninstall.ps1 [-ScanOnly] [-Risk low,medium,high] [-Only 规则ID,...] [-NoBackup] [-NoPause]'
+    Write-Ui ''
+    Write-Ui '  -ScanOnly   只扫描并列出，不询问、不删除'
+    Write-Ui '  -Risk       只处理指定风险级别的规则（默认全部）'
+    Write-Ui '  -Only       只处理指定 ID 的规则'
+    Write-Ui '  -NoBackup   清理前不备份（不推荐）'
+    Write-Ui '  -NoPause    结束时不等待回车'
+    Write-Ui ''
+    Write-Ui '退出码：0 正常  1 部分失败  2 参数错误  4 用户取消  5 需要管理员'
 }
-$detectedItems = @($uniqueItems)
-$report.summary.detected = $detectedItems.Count
 
-if ($detectedItems.Count -eq 0) {
-    Write-Result '✓' '安全' '未发现需要清理的项目。' Success
-    Write-KeyValue '已扫描到' '0 项' Success
-    Write-ProtectedItems -Items $protectedItems
+function Show-SpaHeader {
+    Write-Host ''
+    Write-Ui '  STEAM SPA 清理工具' Accent -NoNewline
+    Write-Ui ('   v' + $SteamSPAReleaseVersion + ' · 更新于 ' + $SteamSPAUpdatedAt) Muted
+    Write-Ui '  假入库清理/专杀：注入 DLL、STEAM 配置、注册表、启动项、计划任务、Defender 排除项、后台进程' Muted
+    Write-Ui '  作者：万能小哥' Muted
 }
-else {
-    $categoryOrder = @('files', 'config', 'registry', 'startup', 'security', 'process', 'other')
-    foreach ($category in $categoryOrder) {
-        $items = @($detectedItems | Where-Object { $_.Category -eq $category })
-        if ($items.Count -eq 0) { continue }
 
-        Write-Status ("  {0} ({1})" -f (Get-CategoryTitle -Category $category), $items.Count) Accent
-        $index = 1
-        foreach ($item in $items) {
-            Write-Status ('    {0,2}. ' -f $index) Muted -NoNewline
-            Write-Status $item.Label Path
-            $index++
-        }
-        Write-Blank
+function Get-SteamProcess {
+    return @(Get-Process -Name 'steam', 'steamwebhelper' -ErrorAction SilentlyContinue)
+}
+
+# 先请 STEAM 自己退出，15 秒后还没退就强制结束。返回是否已全部退出。
+function Stop-Steam {
+    param([string]$SteamPath)
+    $exe = if ($SteamPath) { Join-Path $SteamPath 'steam.exe' } else { $null }
+    if ($exe -and (Test-Path -LiteralPath $exe -PathType Leaf)) {
+        try { Start-Process -FilePath $exe -ArgumentList '-shutdown' -ErrorAction Stop } catch {}
     }
-    Write-KeyValue '已扫描到' ($detectedItems.Count.ToString() + ' 项') Danger
+    $deadline = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $deadline -and (Get-SteamProcess).Count -gt 0) { Start-Sleep -Milliseconds 500 }
+    Get-SteamProcess | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 800
+    return ((Get-SteamProcess).Count -eq 0)
+}
 
-    Write-ProtectedItems -Items $protectedItems
+function Get-SpaRiskRank {
+    param([string]$Risk)
+    switch ($Risk) { 'high' { 3 } 'medium' { 2 } default { 1 } }
+}
 
-    Write-Section '⚠️ 注意事项'
-    Write-Status '    1. 此工具不影响游戏、存档、创意工坊、MOD，请放心使用~' WarningSoft
-    Write-Status '    2. 清理后可能需要重新登录 STEAM !' WarningSoft
-    Write-Status '    3. 请确保还记得账户名称、邮箱、密码、手机令牌!' WarningSoft
-    Write-Status '    4. 如清理失败，请退出杀毒软件后重试!' WarningSoft
-    Write-Status '    5. 清理后首次打开 STEAM 可能较慢，建议提前开启加速器，等待几分钟或重启后通常会恢复!' WarningSoft
-
-    $confirmed = Read-CleanupConfirmation
-
-    if (-not $confirmed) {
-        $report.summary.skipped += $detectedItems.Count
-        Write-Result '–' '取消' '已取消清理，未删除任何项目。' Warning
+function Select-SpaRules {
+    param($Database, [hashtable]$Options)
+    $all = @($Database.rules)
+    foreach ($id in $Options.Only) {
+        if (-not ($all | Where-Object { $_.id -eq $id })) { $Spa.Warnings.Add('未找到规则 ID: ' + $id) }
     }
-    else {
-        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-        if (-not $isAdmin) {
-            throw ('清理需要以管理员身份运行 PowerShell。请右键 PowerShell，选择“以管理员身份运行”，然后重新执行命令。')
-        }
+    return @($all | Where-Object {
+            $_.enabled -ne $false -and
+            $Options.Risk -contains $_.risk -and
+            ($Options.Only.Count -eq 0 -or $Options.Only -contains $_.id)
+        })
+}
 
-        Write-Blank
-        Write-Rule '开始清理'
-        foreach ($item in $detectedItems) {
-            try {
-                $result = Remove-Action -Action $item.Action -Variables $variables -BackupRoot $backupRoot -NoBackup:$NoBackup
-                if ($result -eq 'removed') {
-                    $report.summary.removed++
-                    Write-Result '✓' '已删除' $item.Label Success
+# 扫描所有规则，合并指向同一目标的动作。只读，不修改系统。
+function Invoke-SpaScan {
+    param([object[]]$Rules, [hashtable]$Variables)
+
+    $byKey = @{}
+    $targets = New-Object System.Collections.Generic.List[object]
+    $total = 0
+    foreach ($rule in $Rules) { $total += @($rule.actions).Count }
+    $done = 0
+
+    foreach ($rule in $Rules) {
+        foreach ($action in @($rule.actions)) {
+            $done++
+            Write-UiProgress -Current $done -Total $total
+            foreach ($found in @(Find-SpaActionTargets -Action $action -Variables $Variables)) {
+                $target = $byKey[$found.Key]
+                if (-not $target) {
+                    $target = $found
+                    $byKey[$found.Key] = $target
+                    $targets.Add($target)
                 }
-                elseif ($result -eq 'protected') {
-                    $report.summary.protected++
-                    Write-Result '🛡' '官方文件' ($item.Label + ' (Valve 数字签名，已保护)') Success
+                elseif ($found.Recurse) {
+                    $target.Recurse = $true
                 }
-                else {
-                    $report.summary.skipped++
-                    Write-Result '·' '跳过' $item.Label Muted
-                }
+                if (-not $target.RuleIds.Contains($rule.id)) { $target.RuleIds.Add($rule.id) }
+                if ((Get-SpaRiskRank $rule.risk) -gt (Get-SpaRiskRank $target.Risk)) { $target.Risk = $rule.risk }
+                if ($rule.confirm -eq $true) { $target.Confirm = $true }
             }
-            catch {
-                $report.summary.failed++
-                Write-Result '×' '失败' ($item.Label + ' - ' + $_.Exception.Message) Danger
+        }
+    }
+    Clear-UiProgress
+    Write-UiResult '扫描完成' ('共检查 {0} 个位置' -f $total) Success
+    return $targets.ToArray()
+}
+
+function Show-SpaFindings {
+    param([object[]]$Items, [object[]]$Protected)
+
+    $titles = [ordered]@{ files = '文件'; config = 'STEAM 配置'; registry = '注册表'; startup = '启动项 / 计划任务'; security = '安全设置'; process = '进程' }
+    $n = 0
+    foreach ($category in $titles.Keys) {
+        $group = @($Items | Where-Object { $_.Category -eq $category })
+        if ($group.Count -eq 0) { continue }
+        Write-Host ''
+        Write-Ui ('  {0} ({1})' -f $titles[$category], $group.Count) Accent
+        foreach ($item in $group) {
+            $n++
+            Write-Ui ('  {0,4}. ' -f $n) Muted -NoNewline
+            if ($item.Confirm) {
+                Write-Ui $item.Label Path -NoNewline
+                Write-Ui '  [需确认]' Warning
             }
+            else {
+                Write-Ui $item.Label Path
+            }
+        }
+    }
+
+    if ($Protected.Count -gt 0) {
+        Write-Host ''
+        Write-Ui ('  已自动保护 {0} 项（不会删除）' -f $Protected.Count) Success
+        foreach ($item in $Protected) {
+            Write-Ui ('        {0}  ({1})' -f $item.Label, $item.Note) Muted
         }
     }
 }
 
-Write-Blank
-Write-Section '🎉 完成'
-if ($report.summary.failed -gt 0) {
-    Write-Result '×' '清理状态' '部分项目清理失败' Danger
-}
-elseif ($report.summary.removed -gt 0) {
-    Write-Result '✓' '清理状态' '清理完成' Success
-}
-elseif ($report.summary.detected -gt 0) {
-    Write-Result '–' '清理状态' '未执行清理' Warning
-}
-else {
-    Write-Result '✓' '清理状态' '无需清理' Success
-}
-Write-KeyValue '发现' $report.summary.detected
-Write-KeyValue '删除' $report.summary.removed Success
-Write-KeyValue '失败' $report.summary.failed Danger
-Write-KeyValue '跳过' $report.summary.skipped Muted
+function Show-SpaSummary {
+    param([object[]]$Items, [string]$BackupPath, [datetime]$StartedAt)
 
-if ($report.summary.removed -gt 0 -and -not $NoBackup) {
-    Write-KeyValue '备份' $backupRoot Path
-}
+    $removed = @($Items | Where-Object { $_.Status -eq 'removed' }).Count
+    $failed = @($Items | Where-Object { $_.Status -eq 'failed' }).Count
+    $skipped = @($Items | Where-Object { $_.Status -eq 'skipped' -or -not $_.Status }).Count
 
-Write-Blank
-if (-not $NoPause) {
-    Write-Blank
-    Write-Status '  按回车退出...' Accent -NoNewline
-    if (-not [Console]::IsInputRedirected) {
-        Read-Host | Out-Null
+    Write-UiSection '完成'
+    if ($failed -gt 0) { Write-UiResult '结果' '部分项目清理失败。请退出杀毒软件后重新运行一次。' Danger }
+    elseif ($removed -gt 0) { Write-UiResult '结果' '清理完成' Success }
+    else { Write-UiResult '结果' '没有删除任何项目' Warning }
+    Write-UiKeyValue '发现' ([string]$Items.Count)
+    Write-UiKeyValue '已清理' ([string]$removed) Success
+    Write-UiKeyValue '失败' ([string]$failed) $(if ($failed) { 'Danger' } else { 'Muted' })
+    Write-UiKeyValue '跳过' ([string]$skipped) Muted
+    if ($BackupPath) {
+        Write-UiKeyValue '备份位置' $BackupPath Path
+        Write-UiKeyValue '恢复方法' '运行备份目录里的 restore.ps1' Muted
     }
+    Write-UiKeyValue '耗时' ('{0:N1} 秒' -f ((Get-Date) - $StartedAt).TotalSeconds) Muted
 }
+
+function Invoke-SpaMain {
+    param([hashtable]$Options, [string]$SelfText)
+
+    $startedAt = Get-Date
+    if ($Options.Help) { Show-SpaHelp; return 0 }
+    if ($Options.Errors.Count -gt 0) {
+        foreach ($e in $Options.Errors) { Write-UiResult '参数错误' $e Danger }
+        Write-Host ''
+        Show-SpaHelp
+        return 2
+    }
+
+    try { $Host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具' } catch {}
+    if (-not $Spa.Ui.Redirected) { try { Clear-Host } catch {} }
+    Show-SpaHeader
+
+    # ---- 环境 ----
+    $variables = Get-SpaVariables
+    $isAdmin = Test-SpaAdmin
+    Write-UiSection '本机信息'
+    Write-UiKeyValue '操作系统' (Get-SpaOSName)
+    Write-UiKeyValue 'PowerShell' ([string]$PSVersionTable.PSVersion)
+    if ($variables.SteamPath) { Write-UiKeyValue 'STEAM 路径' $variables.SteamPath Path }
+    else { Write-UiKeyValue 'STEAM 路径' '未检测到（STEAM 目录相关规则将跳过）' Warning }
+    Write-UiKeyValue '管理员权限' $(if ($isAdmin) { '是' } else { '否' }) $(if ($isAdmin) { 'Success' } else { 'Warning' })
+
+    if (-not $isAdmin -and -not $Options.ScanOnly -and -not $Options.Elevated -and -not $Spa.Ui.InputRedirected) {
+        Write-Host ''
+        Write-Ui '  清理需要管理员权限；普通权限下也看不到 Defender 排除项等系统设置。' Warning
+        if ((Read-UiChoice -Prompt '以管理员身份重新打开本工具？[Y/n]' -Allowed @('Y', 'N') -Default 'Y') -eq 'Y') {
+            if (Start-SpaElevated -SelfText $SelfText -Options $Options) {
+                Write-UiResult '已启动' '已在新的管理员窗口中运行，本窗口可以关闭。' Success
+                return 0
+            }
+            Write-UiResult '未提权' '没有获得管理员权限（可能取消了 UAC 提示），继续以普通权限扫描。' Warning
+        }
+    }
+
+    # ---- 历史线索 ----
+    $clues = @(Find-SpaHistoryClues -Lines (Get-SpaHistoryLines))
+    if ($clues.Count -gt 0) {
+        Write-UiSection '历史线索'
+        Write-Ui '  PowerShell 历史里有疑似假入库脚本的记录（仅本机显示，不上传）：' Warning
+        $i = 0
+        foreach ($clue in $clues) { $i++; Write-Ui ('  {0,4}. ' -f $i) Muted -NoNewline; Write-Ui $clue Path }
+    }
+
+    # ---- 扫描 ----
+    Write-UiSection '扫描'
+    $rules = Select-SpaRules -Database ($EmbeddedTargetsJson | ConvertFrom-Json) -Options $Options
+    $all = @(Invoke-SpaScan -Rules $rules -Variables $variables)
+    $items = @($all | Where-Object { $_.State -eq 'present' })
+    $protected = @($all | Where-Object { $_.State -eq 'protected' })
+    foreach ($w in $Spa.Warnings) { Write-UiResult '提示' $w Warning }
+    if ($Spa.DefenderHidden) { Write-UiResult '提示' 'Defender 排除项需要管理员权限才能检查，本次已跳过。' Warning }
+
+    if ($items.Count -eq 0) {
+        Show-SpaFindings -Items @() -Protected $protected
+        Write-Host ''
+        Write-UiResult '安全' '未发现需要清理的项目。' Success
+        return 0
+    }
+
+    Show-SpaFindings -Items $items -Protected $protected
+    Write-Host ''
+    Write-UiKeyValue '共发现' ('{0} 项' -f $items.Count) Danger
+    if ($Options.ScanOnly) { return 0 }
+
+    # ---- 确认 ----
+    if (-not $isAdmin) {
+        Write-UiSection '需要管理员权限'
+        Write-Ui '  请右键开始菜单，选择"终端(管理员)"或"Windows PowerShell(管理员)"，再重新运行同一条命令。' Warning
+        return 5
+    }
+
+    $steamRunning = (Get-SteamProcess).Count -gt 0
+    Write-UiSection '注意事项'
+    Write-Ui '    1. 不影响游戏、存档、创意工坊、MOD（这些目录被硬性排除）。' Warning
+    Write-Ui '    2. 清理后可能需要重新登录 STEAM，请确认记得账号、邮箱、密码和手机令牌。' Warning
+    Write-Ui '    3. 如清理失败，请退出杀毒软件后重试。' Warning
+    Write-Ui '    4. 清理后首次打开 STEAM 可能较慢，建议提前开启加速器，等几分钟或重启电脑即可。' Warning
+    if ($steamRunning) { Write-Ui '    5. STEAM 正在运行，清理前会自动关闭。' Warning }
+
+    $regular = @($items | Where-Object { -not $_.Confirm })
+    $flagged = @($items | Where-Object { $_.Confirm })
+    Write-UiSection '确认清理？'
+    Write-Ui ('    [Y] 清理全部 {0} 项' -f $items.Count)
+    $allowed = @('Y', 'N')
+    if ($regular.Count -gt 0 -and $flagged.Count -gt 0) {
+        Write-Ui ('    [S] 只清理常规项 {0} 项，跳过 {1} 项 [需确认]' -f $regular.Count, $flagged.Count)
+        $allowed = @('Y', 'S', 'N')
+    }
+    Write-Ui '    [N] 取消（默认）'
+    $choice = Read-UiChoice -Prompt ('请选择 [' + ($allowed -join '/') + ']:') -Allowed $allowed -Default 'N'
+    if ($choice -eq 'N') {
+        Write-UiResult '已取消' '已取消清理，没有删除任何项目。' Warning
+        return 4
+    }
+    $selected = if ($choice -eq 'S') { $regular } else { $items }
+    foreach ($t in $items) { if ($selected -notcontains $t) { Set-SpaResult $t 'skipped' '用户选择跳过' } }
+
+    # ---- 清理 ----
+    Write-UiSection '清理'
+    if ($steamRunning) {
+        if (Stop-Steam -SteamPath $variables.SteamPath) { Write-UiResult '已关闭' 'STEAM' Success }
+        else { Write-UiResult '注意' 'STEAM 没有完全退出，部分文件可能删除失败' Warning }
+    }
+
+    # 先结束进程、删计划任务，避免它们在清理过程中把文件写回来。
+    $order = @{ process = 0; task = 1; file = 2; 'registry-key' = 3; 'registry-value' = 4 }
+    $selected = @($selected | Sort-Object { if ($order.ContainsKey($_.Type)) { $order[$_.Type] } else { 5 } })
+    $backup = New-SpaBackup -Enabled (-not $Options.NoBackup)
+    foreach ($t in $selected) {
+        Remove-SpaTarget -Target $t -Backup $backup -Variables $variables
+        switch ($t.Status) {
+            'removed' { Write-UiResult $(if ($t.Type -eq 'process') { '已结束' } else { '已清理' }) $t.Label Success }
+            'skipped' { Write-UiResult '跳过' ($t.Label + '  (' + $t.Message + ')') Muted }
+            default { Write-UiResult '失败' ($t.Label + '  (' + $t.Message + ')') Danger }
+        }
+    }
+    $backupPath = Complete-SpaBackup -Backup $backup
+
+    Show-SpaSummary -Items $items -BackupPath $backupPath -StartedAt $startedAt
+    if (@($items | Where-Object { $_.Status -eq 'failed' }).Count -gt 0) { return 1 }
+    return 0
+}
+
+# ---- 入口 ----
+$Spa = @{
+    Ui             = $null
+    Defender       = $null
+    DefenderHidden = $false
+    Tasks          = $null
+    Warnings       = New-Object System.Collections.Generic.List[string]
+}
+$spaSelfText = "& {`r`n" + $MyInvocation.MyCommand.ScriptBlock.ToString() + "`r`n} @args`r`n"
+$spaOptions = ConvertFrom-SpaArguments -Arguments $args
+$spaEncoding = $null
+try { $spaEncoding = [Console]::OutputEncoding } catch {}
+$spaExitCode = 1
+try {
+    Initialize-SpaConsole
+    $spaExitCode = [int](@(Invoke-SpaMain -Options $spaOptions -SelfText $spaSelfText)[-1])
+}
+catch {
+    Write-UiResult '错误' ('运行出错：' + $_.Exception.Message) Danger
+}
+finally {
+    if (-not $spaOptions.NoPause) { Wait-UiExit }
+    if ($spaOptions.Elevated -and $PSCommandPath -and $PSCommandPath -like (Join-Path $env:TEMP 'SteamSPA\SteamSPA-*.ps1')) {
+        Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
+    }
+    if ($spaEncoding) { try { [Console]::OutputEncoding = $spaEncoding } catch {} }
+}
+# 只有以文件方式运行时才设置退出码；irm | iex 下 exit 会关掉用户的窗口。
+if ($PSCommandPath) { exit $spaExitCode }
+
+} @args
