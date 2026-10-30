@@ -41,7 +41,8 @@ function Find-SpaHistoryClues {
     $trusted = @('ZERONE2077/SteamSPA')
     $steamDomain = '\bsteam[\w-]*\.(run|cn|cc|icu|work|top|xyz|com|net|vip|fun|site|shop)\b'
     $valveDomain = '\bsteam(powered|community|static|content|games|usercontent|server)\.(com|net)\b'
-    $bareFetch = '\b(irm|iwr|Invoke-RestMethod|Invoke-WebRequest)\s+["'']?(?!https?://)[\w-]+(\.[\w-]+)+'
+    $netCommand = '\b(irm|iwr|Invoke-RestMethod|Invoke-WebRequest|curl|wget|iex|Invoke-Expression|DownloadString|DownloadFile|Start-BitsTransfer)\b|https?://'
+    $bareFetch ='\b(irm|iwr|Invoke-RestMethod|Invoke-WebRequest)\s+["'']?(?!https?://)[\w-]+(\.[\w-]+)+'
 
     $clues = New-Object System.Collections.Generic.List[string]
     foreach ($line in @($Lines)) {
@@ -50,6 +51,8 @@ function Find-SpaHistoryClues {
         foreach ($t in $trusted) { if ($line.IndexOf($t, [StringComparison]::OrdinalIgnoreCase) -ge 0) { $isTrusted = $true } }
         if ($isTrusted) { continue }
 
+        # 只看"联网/执行"类命令，避免 Move-Item D:\Dev\SteamCDK 这种普通文件操作被当成线索。
+        if ($line -notmatch $netCommand) { continue }
         $hit = ($line -match $bareFetch) -or (($line -replace $valveDomain, '') -match $steamDomain)
         if (-not $hit) {
             foreach ($i in $indicators) {

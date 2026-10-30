@@ -1,4 +1,9 @@
-﻿# SteamSPA · 主流程：环境 -> 扫描 -> 展示 -> 确认 -> 备份并清理 -> 汇总
+﻿# SteamSPA · 主流程
+#   本机信息 -> 扫描（只读）-> 扫描结果 -> 历史线索
+#   -> 没发现：结束（普通权限时可选"以管理员身份完整检查"）
+#   -> 发现了：普通权限 -> 打开管理员窗口重新扫描
+#              管理员   -> 清理前须知 -> 一次确认 -> 关闭 STEAM -> 备份并清理 -> 汇总
+#   -> 结束（关闭过 STEAM 时可选"重新打开 STEAM"）
 
 function Show-SpaHelp {
     Write-Ui '用法：uninstall.ps1 [-ScanOnly] [-Risk low,medium,high] [-Only 规则ID,...] [-NoBackup] [-NoPause]'
@@ -14,10 +19,24 @@ function Show-SpaHelp {
 
 function Show-SpaHeader {
     Write-Host ''
-    Write-Ui '  STEAM SPA 清理工具' Accent -NoNewline
-    Write-Ui ('   v' + $SteamSPAReleaseVersion + ' · 更新于 ' + $SteamSPAUpdatedAt) Muted
-    Write-Ui '  假入库清理/专杀：注入 DLL、STEAM 配置、注册表、启动项、计划任务、Defender 排除项、后台进程' Muted
-    Write-Ui '  作者：万能小哥' Muted
+    Write-UiBanner @(
+        '  ███████ ████████ ███████  █████  ███    ███     ███████ ██████   █████  '
+        '  ██         ██    ██      ██   ██ ████  ████     ██      ██   ██ ██   ██ '
+        '  ███████    ██    █████   ███████ ██ ████ ██     ███████ ██████  ███████ '
+        '       ██    ██    ██      ██   ██ ██  ██  ██          ██ ██      ██   ██ '
+        '  ███████    ██    ███████ ██   ██ ██      ██     ███████ ██      ██   ██ '
+    )
+    Write-Host ''
+    Write-Ui '  假入库清理 / 专杀工具：注入 DLL · STEAM 配置 · 注册表 · 启动项 · 系统服务 · 安全策略 · 后台进程' Muted
+    Write-Ui ('  作者：万能小哥    版本：v{0}    最后更新：{1}' -f $SteamSPAReleaseVersion, $SteamSPAUpdatedAt) Dim
+}
+
+# STEAM 目录下的路径显示成 STEAM\...，列表更短更好读（完整路径在本机信息里）。
+function Format-SpaLabel {
+    param([string]$Label)
+    $steam = [string]$Spa.SteamPath
+    if (-not $steam) { return $Label }
+    return [regex]::Replace($Label, [regex]::Escape($steam.TrimEnd('\')), 'STEAM', 'IgnoreCase')
 }
 
 function Get-SteamProcess {
@@ -60,6 +79,7 @@ function Select-SpaRules {
 function Invoke-SpaScan {
     param([object[]]$Rules, [hashtable]$Variables)
 
+    $started = Get-Date
     $byKey = @{}
     $targets = New-Object System.Collections.Generic.List[object]
     $total = 0
@@ -87,40 +107,150 @@ function Invoke-SpaScan {
         }
     }
     Clear-UiProgress
-    Write-UiResult '扫描完成' ('共检查 {0} 个位置' -f $total) Success
+    Write-UiResult '扫描完成' ('共检查 {0} 个位置，用时 {1:N1} 秒' -f $total, ((Get-Date) - $started).TotalSeconds) Success
     return $targets.ToArray()
+}
+
+function Show-SpaEnvironment {
+    param([hashtable]$Variables, [bool]$IsAdmin, [bool]$SteamRunning)
+    Write-UiSection '本机信息'
+    Write-UiKeyValue '系统' (Get-SpaOSName)
+    if ($Variables.SteamPath) { Write-UiKeyValue 'STEAM' $Variables.SteamPath Path }
+    else { Write-UiKeyValue 'STEAM' '未检测到安装目录（STEAM 目录相关检查将跳过）' Warning }
+    if ($SteamRunning) { Write-UiKeyValue 'STEAM 状态' '正在运行' Warning }
+    else { Write-UiKeyValue 'STEAM 状态' '未运行' Muted }
+    if ($IsAdmin) { Write-UiKeyValue '权限' '管理员' Success }
+    else { Write-UiKeyValue '权限' '普通用户（清理时会请求管理员权限）' Muted }
 }
 
 function Show-SpaFindings {
     param([object[]]$Items, [object[]]$Protected)
 
-    $titles = [ordered]@{ files = '文件'; config = 'STEAM 配置'; registry = '注册表'; startup = '启动项 / 计划任务'; security = '安全设置'; process = '进程' }
+    if ($Items.Count -eq 0) {
+        Write-UiSection '扫描结果' '未发现假入库残留' Success
+    }
+    else {
+        $flagged = @($Items | Where-Object { $_.Confirm }).Count
+        $hint = '发现 {0} 项残留' -f $Items.Count
+        if ($flagged -gt 0) { $hint += '（其中 {0} 项涉及系统设置，标为"需确认"）' -f $flagged }
+        Write-UiSection '扫描结果' $hint Danger
+    }
+
+    $titles = [ordered]@{ files = '文件'; config = 'STEAM 配置'; registry = '注册表'; startup = '启动项 / 计划任务'; security = '系统安全设置'; process = '后台进程' }
     $n = 0
     foreach ($category in $titles.Keys) {
         $group = @($Items | Where-Object { $_.Category -eq $category })
         if ($group.Count -eq 0) { continue }
         Write-Host ''
-        Write-Ui ('  {0} ({1})' -f $titles[$category], $group.Count) Accent
+        Write-Ui ('    {0}  ' -f $titles[$category]) Accent -NoNewline
+        Write-Ui ([string]$group.Count) Dim
         foreach ($item in $group) {
             $n++
-            Write-Ui ('  {0,4}. ' -f $n) Muted -NoNewline
-            if ($item.Confirm) {
-                Write-Ui $item.Label Path -NoNewline
-                Write-Ui '  [需确认]' Warning
-            }
-            else {
-                Write-Ui $item.Label Path
-            }
+            Write-Ui ('    {0,4}  ' -f $n) Dim -NoNewline
+            Write-Ui (Format-SpaLabel $item.Label) Path -NoNewline
+            if ($item.Confirm) { Write-Ui '  需确认' Warning } else { Write-Host '' }
         }
     }
 
     if ($Protected.Count -gt 0) {
         Write-Host ''
-        Write-Ui ('  已自动保护 {0} 项（不会删除）' -f $Protected.Count) Success
+        Write-Ui ('    已保护  {0} 项，不会删除' -f $Protected.Count) Success
         foreach ($item in $Protected) {
-            Write-Ui ('        {0}  ({1})' -f $item.Label, $item.Note) Muted
+            Write-Ui ('          {0}  ' -f (Format-SpaLabel $item.Label)) Muted -NoNewline
+            Write-Ui $item.Note Dim
         }
     }
+    foreach ($w in $Spa.Warnings) { Write-UiNote $w -Important }
+}
+
+function Show-SpaClues {
+    $clues = @(Find-SpaHistoryClues -Lines (Get-SpaHistoryLines))
+    if ($clues.Count -eq 0) { return }
+    Write-UiSection '历史线索' '在 PowerShell 历史里找到的可疑下载命令，仅供参考，不作为删除依据'
+    $i = 0
+    foreach ($clue in $clues) {
+        $i++
+        Write-Ui ('    {0,4}  ' -f $i) Dim -NoNewline
+        Write-Ui $clue Muted
+    }
+}
+
+# 普通权限下：以管理员身份重开。成功返回 $true（本窗口随后直接结束，不再等回车）。
+function Request-SpaElevation {
+    param([string]$Reason, [string]$Action, [string]$SelfText)
+    Write-UiSection '需要管理员权限' $Reason Warning
+    Write-UiOption 'Y' $Action
+    Write-UiOption 'N' '退出'
+    if ((Read-UiChoice -Prompt '请选择 [Y/N]，回车 = Y:' -Allowed @('Y', 'N') -Default 'Y') -ne 'Y') { return $false }
+    if (Start-SpaElevated -SelfText $SelfText -Options $Spa.Options) {
+        Write-UiResult '已打开' '已在新的管理员窗口中继续，本窗口可以关闭。' Success
+        $Spa.Paused = $true
+        return $true
+    }
+    Write-UiResult '未提权' '没有获得管理员权限（可能在 UAC 提示里选了"否"）。' Warning
+    Write-UiNote '也可以右键开始菜单，选择"终端(管理员)"，再运行同一条命令。'
+    return $false
+}
+
+# 清理前须知 + 一次确认。返回要清理的目标；取消返回 $null。
+function Read-SpaCleanupDecision {
+    param([object[]]$Items, [bool]$SteamRunning)
+
+    Write-UiSection '清理前请注意'
+    if ($SteamRunning) { Write-UiNote 'STEAM 正在运行，清理时会被强制关闭。' -Important }
+    Write-UiNote '请先保存游戏进度、退出正在运行的游戏，并暂停 STEAM 下载和更新。' -Important
+    Write-UiNote '清理后可能需要重新登录 STEAM：请确认记得账号、密码，手机令牌可用。' -Important
+    Write-UiNote '不影响游戏本体、存档、创意工坊和 MOD（这些目录被硬性排除）。'
+    Write-UiNote '每一项删除前都会备份，出问题可以一键恢复。'
+    Write-UiNote '清理失败时，请暂时退出杀毒软件后重试。'
+    Write-UiNote '清理后首次打开 STEAM 可能较慢，建议开启加速器，耐心等几分钟。'
+
+    $regular = @($Items | Where-Object { -not $_.Confirm })
+    $flagged = @($Items | Where-Object { $_.Confirm })
+    $verb = if ($SteamRunning) { '关闭 STEAM 并清理' } else { '清理' }
+
+    Write-UiSection '是否清理？'
+    Write-UiOption 'Y' ('{0}全部 {1} 项' -f $verb, $Items.Count)
+    $allowed = @('Y', 'N')
+    if ($regular.Count -gt 0 -and $flagged.Count -gt 0) {
+        Write-UiOption 'S' ('{0}常规的 {1} 项，跳过 {2} 项"需确认"' -f $verb, $regular.Count, $flagged.Count)
+        $allowed = @('Y', 'S', 'N')
+    }
+    Write-UiOption 'N' '取消，不做任何修改'
+    $choice = Read-UiChoice -Prompt ('请选择 [' + ($allowed -join '/') + ']，回车 = 取消:') -Allowed $allowed -Default 'N'
+
+    if ($choice -eq 'N') { return $null }
+    if ($choice -eq 'S') {
+        foreach ($t in $flagged) { Set-SpaResult $t 'skipped' '用户选择跳过' }
+        return $regular
+    }
+    return $Items
+}
+
+function Invoke-SpaCleanup {
+    param([object[]]$Selected, [hashtable]$Variables, [bool]$SteamRunning)
+
+    Write-UiSection '清理'
+    if ($SteamRunning) {
+        Write-Ui '    正在关闭 STEAM...' Muted
+        if (Stop-Steam -SteamPath $Variables.SteamPath) { Write-UiResult '已关闭' 'STEAM' Success }
+        else { Write-UiResult '注意' 'STEAM 没有完全退出，部分文件可能删除失败' Warning }
+    }
+
+    # 先结束进程、删计划任务，避免它们在清理过程中把文件写回来。
+    $order = @{ process = 0; task = 1; file = 2; 'registry-key' = 3; 'registry-value' = 4 }
+    $ordered = @($Selected | Sort-Object { if ($order.ContainsKey($_.Type)) { $order[$_.Type] } else { 5 } })
+    $backup = New-SpaBackup -Enabled (-not $Spa.Options.NoBackup)
+    foreach ($t in $ordered) {
+        Remove-SpaTarget -Target $t -Backup $backup -Variables $Variables
+        $label = Format-SpaLabel $t.Label
+        switch ($t.Status) {
+            'removed' { Write-UiResult $(if ($t.Type -eq 'process') { '已结束' } else { '已清理' }) $label Success }
+            'skipped' { Write-UiResult '跳过' ($label + '  (' + $t.Message + ')') Muted }
+            default { Write-UiResult '失败' ($label + '  (' + $t.Message + ')') Danger }
+        }
+    }
+    return (Complete-SpaBackup -Backup $backup)
 }
 
 function Show-SpaSummary {
@@ -130,19 +260,35 @@ function Show-SpaSummary {
     $failed = @($Items | Where-Object { $_.Status -eq 'failed' }).Count
     $skipped = @($Items | Where-Object { $_.Status -eq 'skipped' -or -not $_.Status }).Count
 
-    Write-UiSection '完成'
-    if ($failed -gt 0) { Write-UiResult '结果' '部分项目清理失败。请退出杀毒软件后重新运行一次。' Danger }
-    elseif ($removed -gt 0) { Write-UiResult '结果' '清理完成' Success }
-    else { Write-UiResult '结果' '没有删除任何项目' Warning }
-    Write-UiKeyValue '发现' ([string]$Items.Count)
+    if ($failed -gt 0) { Write-UiSection '完成' ('{0} 项清理失败，请暂时退出杀毒软件后再运行一次' -f $failed) Danger }
+    elseif ($removed -gt 0) { Write-UiSection '完成' '清理成功' Success }
+    else { Write-UiSection '完成' '没有删除任何项目' Warning }
     Write-UiKeyValue '已清理' ([string]$removed) Success
-    Write-UiKeyValue '失败' ([string]$failed) $(if ($failed) { 'Danger' } else { 'Muted' })
-    Write-UiKeyValue '跳过' ([string]$skipped) Muted
+    if ($failed) { Write-UiKeyValue '失败' ([string]$failed) Danger }
+    if ($skipped) { Write-UiKeyValue '跳过' ([string]$skipped) Muted }
     if ($BackupPath) {
-        Write-UiKeyValue '备份位置' $BackupPath Path
-        Write-UiKeyValue '恢复方法' '运行备份目录里的 restore.ps1' Muted
+        Write-UiKeyValue '备份' $BackupPath Path
+        Write-UiKeyValue '恢复' '运行备份目录里的 restore.ps1' Muted
     }
     Write-UiKeyValue '耗时' ('{0:N1} 秒' -f ((Get-Date) - $StartedAt).TotalSeconds) Muted
+}
+
+# 结束：关闭过 STEAM 时可以顺手重新打开。
+function Read-SpaExit {
+    param([string]$SteamPath, [bool]$OfferSteam)
+    $Spa.Paused = $true
+    if ($Spa.Options.NoPause -or ($Spa.Ui -and $Spa.Ui.InputRedirected)) { return }
+    $exe = if ($SteamPath) { Join-Path $SteamPath 'steam.exe' } else { $null }
+    if ($OfferSteam -and $exe -and (Test-Path -LiteralPath $exe -PathType Leaf)) {
+        Write-Host ''
+        Write-UiOption 'R' '重新打开 STEAM'
+        Write-UiOption '回车' '退出'
+        if ((Read-UiChoice -Prompt '请选择:' -Allowed @('R') -Default '') -eq 'R') {
+            try { Start-Process -FilePath $exe -ErrorAction Stop } catch { Write-UiResult '失败' '无法启动 STEAM，请手动打开' Danger }
+        }
+        return
+    }
+    Wait-UiExit
 }
 
 function Invoke-SpaMain {
@@ -161,113 +307,53 @@ function Invoke-SpaMain {
     if (-not $Spa.Ui.Redirected) { try { Clear-Host } catch {} }
     Show-SpaHeader
 
-    # ---- 环境 ----
+    # ---- 本机信息 ----
     $variables = Get-SpaVariables
+    $Spa.SteamPath = $variables.SteamPath
     $isAdmin = Test-SpaAdmin
-    Write-UiSection '本机信息'
-    Write-UiKeyValue '操作系统' (Get-SpaOSName)
-    Write-UiKeyValue 'PowerShell' ([string]$PSVersionTable.PSVersion)
-    if ($variables.SteamPath) { Write-UiKeyValue 'STEAM 路径' $variables.SteamPath Path }
-    else { Write-UiKeyValue 'STEAM 路径' '未检测到（STEAM 目录相关规则将跳过）' Warning }
-    Write-UiKeyValue '管理员权限' $(if ($isAdmin) { '是' } else { '否' }) $(if ($isAdmin) { 'Success' } else { 'Warning' })
+    $steamRunning = (Get-SteamProcess).Count -gt 0
+    Show-SpaEnvironment -Variables $variables -IsAdmin $isAdmin -SteamRunning $steamRunning
 
-    if (-not $isAdmin -and -not $Options.ScanOnly -and -not $Options.Elevated -and -not $Spa.Ui.InputRedirected) {
-        Write-Host ''
-        Write-Ui '  清理需要管理员权限；普通权限下也看不到 Defender 排除项等系统设置。' Warning
-        if ((Read-UiChoice -Prompt '以管理员身份重新打开本工具？[Y/n]' -Allowed @('Y', 'N') -Default 'Y') -eq 'Y') {
-            if (Start-SpaElevated -SelfText $SelfText -Options $Options) {
-                Write-UiResult '已启动' '已在新的管理员窗口中运行，本窗口可以关闭。' Success
-                return 0
-            }
-            Write-UiResult '未提权' '没有获得管理员权限（可能取消了 UAC 提示），继续以普通权限扫描。' Warning
-        }
-    }
-
-    # ---- 历史线索 ----
-    $clues = @(Find-SpaHistoryClues -Lines (Get-SpaHistoryLines))
-    if ($clues.Count -gt 0) {
-        Write-UiSection '历史线索'
-        Write-Ui '  PowerShell 历史里有疑似假入库脚本的记录（仅本机显示，不上传）：' Warning
-        $i = 0
-        foreach ($clue in $clues) { $i++; Write-Ui ('  {0,4}. ' -f $i) Muted -NoNewline; Write-Ui $clue Path }
-    }
-
-    # ---- 扫描 ----
-    Write-UiSection '扫描'
+    # ---- 扫描（只读）----
+    Write-UiSection '扫描' $(if ($Options.Elevated) { '已切换到管理员权限，重新完整扫描' } else { '' })
     $rules = Select-SpaRules -Database ($EmbeddedTargetsJson | ConvertFrom-Json) -Options $Options
     $all = @(Invoke-SpaScan -Rules $rules -Variables $variables)
     $items = @($all | Where-Object { $_.State -eq 'present' })
     $protected = @($all | Where-Object { $_.State -eq 'protected' })
-    foreach ($w in $Spa.Warnings) { Write-UiResult '提示' $w Warning }
-    if ($Spa.DefenderHidden) { Write-UiResult '提示' 'Defender 排除项需要管理员权限才能检查，本次已跳过。' Warning }
+    if ($Spa.DefenderHidden) { $Spa.Warnings.Add('Defender 排除项需要管理员权限才能检查，本次未检查。') }
+    Show-SpaFindings -Items $items -Protected $protected
+    Show-SpaClues
 
+    $canAsk = -not $Options.ScanOnly -and -not $Spa.Ui.InputRedirected
+
+    # ---- 没发现 ----
     if ($items.Count -eq 0) {
-        Show-SpaFindings -Items @() -Protected $protected
-        Write-Host ''
-        Write-UiResult '安全' '未发现需要清理的项目。' Success
+        if ($canAsk -and -not $isAdmin -and $Spa.DefenderHidden) {
+            [void](Request-SpaElevation -Reason '普通权限看不到 Defender 排除项等系统设置' -Action '以管理员身份完整检查一遍' -SelfText $SelfText)
+        }
         return 0
     }
-
-    Show-SpaFindings -Items $items -Protected $protected
-    Write-Host ''
-    Write-UiKeyValue '共发现' ('{0} 项' -f $items.Count) Danger
     if ($Options.ScanOnly) { return 0 }
 
-    # ---- 确认 ----
+    # ---- 发现了，但不是管理员 ----
     if (-not $isAdmin) {
-        Write-UiSection '需要管理员权限'
-        Write-Ui '  请右键开始菜单，选择"终端(管理员)"或"Windows PowerShell(管理员)"，再重新运行同一条命令。' Warning
+        if ($canAsk -and (Request-SpaElevation -Reason '清理需要管理员权限' -Action '以管理员身份打开并继续（会重新扫描，包含 Defender 排除项）' -SelfText $SelfText)) {
+            return 0
+        }
+        if (-not $canAsk) { Write-UiNote '清理需要管理员权限：请以管理员身份重新运行。' -Important }
         return 5
     }
 
+    # ---- 确认并清理 ----
     $steamRunning = (Get-SteamProcess).Count -gt 0
-    Write-UiSection '注意事项'
-    Write-Ui '    1. 不影响游戏、存档、创意工坊、MOD（这些目录被硬性排除）。' Warning
-    Write-Ui '    2. 清理后可能需要重新登录 STEAM，请确认记得账号、邮箱、密码和手机令牌。' Warning
-    Write-Ui '    3. 如清理失败，请退出杀毒软件后重试。' Warning
-    Write-Ui '    4. 清理后首次打开 STEAM 可能较慢，建议提前开启加速器，等几分钟或重启电脑即可。' Warning
-    if ($steamRunning) { Write-Ui '    5. STEAM 正在运行，清理前会自动关闭。' Warning }
-
-    $regular = @($items | Where-Object { -not $_.Confirm })
-    $flagged = @($items | Where-Object { $_.Confirm })
-    Write-UiSection '确认清理？'
-    Write-Ui ('    [Y] 清理全部 {0} 项' -f $items.Count)
-    $allowed = @('Y', 'N')
-    if ($regular.Count -gt 0 -and $flagged.Count -gt 0) {
-        Write-Ui ('    [S] 只清理常规项 {0} 项，跳过 {1} 项 [需确认]' -f $regular.Count, $flagged.Count)
-        $allowed = @('Y', 'S', 'N')
-    }
-    Write-Ui '    [N] 取消（默认）'
-    $choice = Read-UiChoice -Prompt ('请选择 [' + ($allowed -join '/') + ']:') -Allowed $allowed -Default 'N'
-    if ($choice -eq 'N') {
-        Write-UiResult '已取消' '已取消清理，没有删除任何项目。' Warning
+    $selected = Read-SpaCleanupDecision -Items $items -SteamRunning $steamRunning
+    if ($null -eq $selected) {
+        Write-UiSection '已取消' '已取消清理，没有做任何修改' Warning
         return 4
     }
-    $selected = if ($choice -eq 'S') { $regular } else { $items }
-    foreach ($t in $items) { if ($selected -notcontains $t) { Set-SpaResult $t 'skipped' '用户选择跳过' } }
-
-    # ---- 清理 ----
-    Write-UiSection '清理'
-    if ($steamRunning) {
-        if (Stop-Steam -SteamPath $variables.SteamPath) { Write-UiResult '已关闭' 'STEAM' Success }
-        else { Write-UiResult '注意' 'STEAM 没有完全退出，部分文件可能删除失败' Warning }
-    }
-
-    # 先结束进程、删计划任务，避免它们在清理过程中把文件写回来。
-    $order = @{ process = 0; task = 1; file = 2; 'registry-key' = 3; 'registry-value' = 4 }
-    $selected = @($selected | Sort-Object { if ($order.ContainsKey($_.Type)) { $order[$_.Type] } else { 5 } })
-    $backup = New-SpaBackup -Enabled (-not $Options.NoBackup)
-    foreach ($t in $selected) {
-        Remove-SpaTarget -Target $t -Backup $backup -Variables $variables
-        switch ($t.Status) {
-            'removed' { Write-UiResult $(if ($t.Type -eq 'process') { '已结束' } else { '已清理' }) $t.Label Success }
-            'skipped' { Write-UiResult '跳过' ($t.Label + '  (' + $t.Message + ')') Muted }
-            default { Write-UiResult '失败' ($t.Label + '  (' + $t.Message + ')') Danger }
-        }
-    }
-    $backupPath = Complete-SpaBackup -Backup $backup
-
+    $backupPath = Invoke-SpaCleanup -Selected @($selected) -Variables $variables -SteamRunning $steamRunning
     Show-SpaSummary -Items $items -BackupPath $backupPath -StartedAt $startedAt
+    Read-SpaExit -SteamPath $variables.SteamPath -OfferSteam $steamRunning
     if (@($items | Where-Object { $_.Status -eq 'failed' }).Count -gt 0) { return 1 }
     return 0
 }
@@ -275,13 +361,17 @@ function Invoke-SpaMain {
 # ---- 入口 ----
 $Spa = @{
     Ui             = $null
+    Options        = $null
+    SteamPath      = $null
     Defender       = $null
     DefenderHidden = $false
     Tasks          = $null
+    Paused         = $false
     Warnings       = New-Object System.Collections.Generic.List[string]
 }
 $spaSelfText = "& {`r`n" + $MyInvocation.MyCommand.ScriptBlock.ToString() + "`r`n} @args`r`n"
 $spaOptions = ConvertFrom-SpaArguments -Arguments $args
+$Spa.Options = $spaOptions
 $spaEncoding = $null
 try { $spaEncoding = [Console]::OutputEncoding } catch {}
 $spaExitCode = 1
@@ -293,7 +383,7 @@ catch {
     Write-UiResult '错误' ('运行出错：' + $_.Exception.Message) Danger
 }
 finally {
-    if (-not $spaOptions.NoPause) { Wait-UiExit }
+    if (-not $spaOptions.NoPause -and -not $Spa.Paused) { Wait-UiExit }
     if ($spaOptions.Elevated -and $PSCommandPath -and $PSCommandPath -like (Join-Path $env:TEMP 'SteamSPA\SteamSPA-*.ps1')) {
         Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
     }

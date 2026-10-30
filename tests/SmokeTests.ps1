@@ -69,6 +69,7 @@ $clues = @(Find-SpaHistoryClues @(
         'irm cdks.run|iex',
         'irm https://claude.ai/install.ps1 | iex',
         'start https://store.steampowered.com/app/1',
+        'Move-Item "D:\Dev\SteamCDK" "D:\Dev\tools\steam-cdk"',
         'irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1 | iex',
         'Get-ChildItem'))
 Assert ($clues.Count -eq 3) ('历史线索命中 3 条（实际 ' + $clues.Count + ': ' + ($clues -join ' ; ') + '）')
