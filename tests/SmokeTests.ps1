@@ -1,6 +1,6 @@
 ﻿#requires -Version 5.1
-# SteamSPA 冒烟测试：语法、生成物一致性、规则库、纯函数单测、生成物只扫描运行。
-# 全程只读，不会删除任何东西。
+# SteamSPA 冒烟测试：语法、编码、规则库、纯函数单测、沙盒删除、只扫描运行。
+# 只在临时目录和测试注册表键里删除，不碰系统里的其他东西。
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $failures = New-Object System.Collections.Generic.List[string]
@@ -11,28 +11,26 @@ function Assert {
     else { Write-Host ('  FAIL  ' + $Name) -ForegroundColor Red; $failures.Add($Name) }
 }
 
-Write-Host '== 语法'
-$files = @(Get-ChildItem -LiteralPath (Join-Path $root 'src') -Filter '*.ps1') + @(Get-Item -LiteralPath (Join-Path $root 'uninstall.ps1'))
-foreach ($file in $files) {
-    $tokens = $null; $errors = $null
-    [Management.Automation.Language.Parser]::ParseInput([IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8), [ref]$tokens, [ref]$errors) | Out-Null
-    Assert ($errors.Count -eq 0) ('parse ' + $file.Name + $(if ($errors.Count) { ': ' + $errors[0].Message }))
-}
+$script = Join-Path $root 'uninstall.ps1'
+$text = [IO.File]::ReadAllText($script, [Text.Encoding]::UTF8)
 
-Write-Host '== 生成物'
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'tools\build.ps1') -Check | Out-Null
-Assert ($LASTEXITCODE -eq 0) 'uninstall.ps1 与源码一致'
-$bytes = [IO.File]::ReadAllBytes((Join-Path $root 'uninstall.ps1'))
-Assert ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) 'uninstall.ps1 带 UTF-8 BOM'
+Write-Host '== 文件'
+$tokens = $null; $errors = $null
+$ast = [Management.Automation.Language.Parser]::ParseInput($text, [ref]$tokens, [ref]$errors)
+Assert ($errors.Count -eq 0) ('语法' + $(if ($errors.Count) { ': ' + $errors[0].Message }))
+$bytes = [IO.File]::ReadAllBytes($script)
+# 5.1 读无 BOM 脚本会按 ANSI 解码，中文乱码。
+Assert ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) '带 UTF-8 BOM'
 
-# 加载模块（只定义函数，没有副作用）
+# 只加载函数定义，不运行主流程。
 $Spa = @{ Ui = $null; Defender = $null; Tasks = $null; Warnings = New-Object System.Collections.Generic.List[string] }
-foreach ($module in @(Get-ChildItem -LiteralPath (Join-Path $root 'src') -Filter '*.ps1' | Where-Object { $_.Name -ne '90-main.ps1' })) {
-    . ([scriptblock]::Create([IO.File]::ReadAllText($module.FullName, [Text.Encoding]::UTF8)))
+foreach ($fn in $ast.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
+    . ([scriptblock]::Create($fn.Extent.Text))
 }
 
 Write-Host '== 规则库'
-$db = [IO.File]::ReadAllText((Join-Path $root 'data\rules.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json
+$json = [regex]::Match($text, "(?s)\`$EmbeddedTargetsJson = @'\r?\n(.*?)\r?\n'@").Groups[1].Value
+$db = $json | ConvertFrom-Json
 $ids = @($db.rules | ForEach-Object { $_.id })
 Assert ($ids.Count -gt 0) ('规则数量 ' + $ids.Count)
 Assert ($ids.Count -eq @($ids | Select-Object -Unique).Count) '规则 ID 不重复'

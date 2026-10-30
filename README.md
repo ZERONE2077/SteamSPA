@@ -53,30 +53,22 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create
 6. STEAM 正在运行时先关闭；先结束进程、删计划任务，再删文件和注册表。清理对象都是非官方残留，不做备份。
 7. 汇总结果。
 
-## 架构
+## 维护
 
-```text
-data/rules.json + data/version.json
-      ↓
-src/10-ui.ps1        终端输出（唯一调用 Write-Host 的地方）
-src/20-context.ps1   参数、权限、STEAM 路径、路径模板、删除安全边界、提权
-src/30-targets.ps1   每种规则类型的“查找 / 删除”
-src/50-history.ps1   PowerShell 历史线索
-src/90-main.ps1      主流程
-      ↓
-tools/build.ps1  →  uninstall.ps1（唯一对外分发产物，整体包在 & { } 里运行）
-```
+整个工具就是一个文件 `uninstall.ps1`，规则以 JSON 形式内嵌在开头的 `$EmbeddedTargetsJson` 里。
 
-`data/rules.json` 是运行规则的唯一数据源。支持的动作类型：`file`、`registry-key`、`registry-value`、
-`defender-exclusion-path`、`defender-exclusion-extension`、`defender-exclusion-process`、`process`、`task`、`task-contains`。
-修改规则或源码后执行 `tools/build.ps1`，再执行 `tests/SmokeTests.ps1`。
+收到新的假入库 `irm` 指令时：
 
-新商家样本的分析、规则更新和发布流程见 `research/README.md`。
+1. 逐段下载脚本和载荷到本机 `research/samples/<来源>/<日期>/`（只下载不执行，该目录不上传）。
+2. 找出它写入或替换的文件、注册表、Defender 排除、计划任务、进程。
+3. 补进规则：优先追加到已有规则；只写精确路径，不写整目录；不改已有规则 id；没有证据的不加。
+4. 运行 `tests/SmokeTests.ps1` 验证，然后 `tools/publish.ps1 -Message "rules: 新增 <来源>"` 发布。
 
-## 发布
+支持的动作类型：`file`、`registry-key`、`registry-value`、`defender-exclusion-path`、
+`defender-exclusion-extension`、`defender-exclusion-process`、`process`、`task`、`task-contains`。
 
-修改规则或源码后执行 `tools/publish.ps1`。脚本会先构建并运行冒烟测试（含生成物只扫描试运行），
-全部通过后才提交并推送 `origin/main`，最后核对线上版本。
+`publish.ps1` 会把脚本里的更新日期改成当天，测试通过后提交推送，并核对线上版本。
+根目录的 `.lnk`（不进仓库）通过 `tools/launch.ps1` 分别试跑本地、GitHub、jsDelivr 三种来源。
 
 ## 安全设计
 
@@ -91,12 +83,10 @@ tools/build.ps1  →  uninstall.ps1（唯一对外分发产物，整体包在 & 
 ## 目录
 
 ```text
-uninstall.ps1        生成物，唯一对外分发的文件
-src/                 源码模块
-data/                rules.json（规则）、rules.schema.json、version.json
-tools/               build.ps1 / publish.ps1 / launch.ps1
-tests/               SmokeTests.ps1
-research/            维护流程、样本分析脚本、痕迹总表（样本和笔记本地保留，不上传）
+uninstall.ps1        整个工具（程序 + 规则），唯一对外分发的文件
+tests/SmokeTests.ps1 冒烟测试
+tools/publish.ps1    发布
+tools/launch.ps1     本机试跑
 ```
 
-Windows PowerShell 5.1+，无需第三方 PowerShell 模块。
+Windows PowerShell 5.1+，无需第三方模块。

@@ -14,11 +14,8 @@ desktop.ini
 .idea/
 /.workbuddy/
 
-# Local analysis notes
-# Research archive: internal notes and third-party malware samples.
-# Keep in the working tree, never publish.
-/research/docs/
-/research/samples/
+# Local research: malware samples, notes, analysis helpers. Never publish.
+/research/
 
 # Local double-click test shortcuts (machine-specific paths)
 /*.lnk

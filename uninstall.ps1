@@ -1,14 +1,13 @@
 ﻿# SteamSPA · STEAM 假入库残留清理工具
-# 生成文件，请勿手改。源码在 src/，规则在 data/rules.json，用 tools/build.ps1 生成。
+# 单文件：规则和程序都在这里。新增痕迹改下面的 JSON，然后跑 tests/SmokeTests.ps1。
 # 整个程序包在 & { } 里运行：irm | iex 时不会在用户会话里留下函数和变量。
 & {
 $SteamSPAReleaseVersion = '4.0'
 $SteamSPAUpdatedAt = '2026-10-30'
 
-# 内嵌规则库，来源：data/rules.json
+# 规则库：id 不要改（-Only 参数用它）；路径只写样本实际写入的精确位置。
 $EmbeddedTargetsJson = @'
 {
-    "$schema": "./rules.schema.json",
     "version": 1,
     "meta": {
         "project": "SteamSPA",
