@@ -28,24 +28,12 @@ Invoke-Step 'Build generated artifact' {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\tools\build.ps1'
 }
 
+# 冒烟测试已包含：语法、生成物一致性、规则库、样本引用、沙盒删除、生成物只扫描运行。
 Invoke-Step 'Run smoke tests' {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\tests\SmokeTests.ps1'
 }
 
-Invoke-Step 'Validate embedded rules' {
-    & python '.\tools\validate-rules.py'
-}
-
-Write-Host '==> Run generated artifact in scan-only mode' -ForegroundColor Cyan
-$artifactOutput = (powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\uninstall.ps1' -ScanOnly -NoPause 2>&1 | Out-String)
-if ($LASTEXITCODE -ne 0) {
-    throw "uninstall.ps1 failed with exit code $LASTEXITCODE`n$artifactOutput"
-}
-if ($artifactOutput -notmatch '扫描完成') {
-    throw "uninstall.ps1 did not report scan completion`n$artifactOutput"
-}
-Write-Host 'Generated artifact ran successfully.' -ForegroundColor Green
-
+# research/docs 和 research/samples 被 .gitignore 排除，git add 不会带上它们。
 $publishPaths = @(
     'README.md',
     'uninstall.ps1',
@@ -53,8 +41,7 @@ $publishPaths = @(
     'src',
     'tools',
     'tests',
-    'schemas',
-    'research\README.md'
+    'research'
 )
 git add -- $publishPaths
 if ($LASTEXITCODE -ne 0) {

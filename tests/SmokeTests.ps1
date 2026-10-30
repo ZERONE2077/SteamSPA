@@ -42,6 +42,13 @@ foreach ($rule in $db.rules) {
     $badTypes = @($rule.actions | Where-Object { $supported -notcontains $_.type } | ForEach-Object { $_.type })
     Assert ($ok -and $badTypes.Count -eq 0) ('规则 ' + $rule.id + $(if ($badTypes) { ' 不支持的类型: ' + ($badTypes -join ',') }))
 }
+# 样本归档不进仓库（CI 上没有），本机有时才检查 sources 引用。
+if (Test-Path -LiteralPath (Join-Path $root 'research\samples')) {
+    $refs = @($db.rules | ForEach-Object { @($_.sources) } | Where-Object { $_ -like 'research/samples/*' } | Select-Object -Unique)
+    $missing = @($refs | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_)) })
+    Assert ($missing.Count -eq 0) ('样本引用 ' + $refs.Count + ' 条' + $(if ($missing) { '，缺失: ' + ($missing -join ', ') }))
+}
+else { Write-Host '  skip  本机没有 research/samples，跳过样本引用检查' }
 
 Write-Host '== 单元'
 $vars = @{ SteamPath = 'C:\Steam'; APPDATA = 'C:\Users\u\AppData\Roaming'; TEMP = 'C:\T' }

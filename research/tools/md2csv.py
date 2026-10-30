@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""把 data/痕迹总表.md 的表格同步成 CSV（UTF-8 BOM，Excel/AI 通用）。
+"""把 research/痕迹总表.md 的表格同步成 CSV（UTF-8 BOM，Excel/AI 通用）。
 
-用法（在仓库根执行）:
-    python research/tools/md2csv.py                      # 默认 data/痕迹总表.md -> .csv
+用法:
+    python research/tools/md2csv.py             # 默认 research/痕迹总表.md -> .csv
     python research/tools/md2csv.py <some.md> [out.csv]
 
 规则:
@@ -12,20 +12,7 @@
 """
 import io, os, re, sys, csv
 
-def _find_root(start):
-    """向上找到含 data/ 子目录的仓库根（脚本从 tools/ 挪到 research/tools/ 后不再写死层数）。"""
-    d = start
-    for _ in range(5):
-        if os.path.isdir(os.path.join(d, 'data')):
-            return d
-        parent = os.path.dirname(d)
-        if parent == d:
-            break
-        d = parent
-    return start
-
-
-ROOT = _find_root(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 中文表头 -> 英文列名（AI 友好、省 token）
 HEADER_MAP = {
@@ -44,7 +31,7 @@ def is_sep(s):
 
 
 def main():
-    src = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'data', '痕迹总表.md')
+    src = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'research', '痕迹总表.md')
     dst = sys.argv[2] if len(sys.argv) > 2 else os.path.splitext(src)[0] + '.csv'
 
     rows, header, zone = [], None, ''

@@ -4,13 +4,7 @@ SteamSPA 是一个 Windows PowerShell 工具，用于识别、展示并清理 St
 
 ## 使用
 
-### GitHub Raw
-
-```powershell
-irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1 | iex
-```
-
-### jsDelivr CDN
+### jsDelivr 镜像（国内推荐）
 
 jsDelivr 在国内更快，但它把 `.ps1` 当二进制返回（`Content-Type: application/octet-stream`，不带 charset），**Windows PowerShell 5.1 的 `irm` 会按 ISO-8859-1 解码，中文全部乱码**。必须按字节取回再按 UTF-8 解：
 
@@ -24,6 +18,14 @@ PowerShell 7 默认 UTF-8，用 `irm ... | iex` 也正常。
 浏览器直链：
 
 https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1
+
+`@main` 会被 CDN 缓存几个小时，刚发布的新版可能要等一会儿才生效。
+
+### GitHub Raw
+
+```powershell
+irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1 | iex
+```
 
 本地运行（`-File` 在 5.1 下会按 ANSI 解码导致中文乱码，改用显式 UTF-8 读取）：
 
@@ -69,12 +71,12 @@ tools/build.ps1  →  uninstall.ps1（唯一对外分发产物，整体包在 & 
 `defender-exclusion-path`、`defender-exclusion-extension`、`defender-exclusion-process`、`process`、`task`、`task-contains`。
 修改规则或源码后执行 `tools/build.ps1`，再执行 `tests/SmokeTests.ps1`。
 
-样本归档、规则更新和验证步骤见 `research/README.md`。
+新商家样本的分析、规则更新和发布流程见 `research/README.md`。
 
 ## 发布
 
-修改规则或源码后执行 `tools/publish.ps1`。脚本会先构建、运行冒烟测试、校验规则，
-再以取消模式实际运行生成的 `uninstall.ps1`；全部通过后才提交并推送 `origin/main`。
+修改规则或源码后执行 `tools/publish.ps1`。脚本会先构建并运行冒烟测试（含生成物只扫描试运行），
+全部通过后才提交并推送 `origin/main`，最后核对线上版本。
 
 ## 安全设计
 
@@ -89,12 +91,12 @@ tools/build.ps1  →  uninstall.ps1（唯一对外分发产物，整体包在 & 
 ## 目录
 
 ```text
-uninstall.ps1
-data/rules.json
-src/
-tools/
-tests/
-schemas/
+uninstall.ps1        生成物，唯一对外分发的文件
+src/                 源码模块
+data/                rules.json（规则）、rules.schema.json、version.json
+tools/               build.ps1 / publish.ps1 / launch.ps1
+tests/               SmokeTests.ps1
+research/            维护流程、样本分析脚本、痕迹总表（样本和笔记本地保留，不上传）
 ```
 
 Windows PowerShell 5.1+，无需第三方 PowerShell 模块。

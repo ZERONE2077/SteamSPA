@@ -1,16 +1,22 @@
 # -*- coding: utf-8 -*-
-"""扫描 scripts/ 下全部假入库样本，提取落地物（文件/目录/注册表/任务/服务/进程/排除/URL），
-并与 uninstall.ps1 内嵌规则的条目比对，输出缺口。
+"""扫描 research/samples/ 下全部假入库样本，输出完整路径清单（含读取和官方文件）。
+
+这是样本盘点和告警线索，不是删除候选清单。判断实际写入动作优先使用
+research/tools/scan_writes.py，最终只把确认过的精确路径写入 data/rules.json。
 
 输出：
   temp/steamcn/samples-artifacts.md  明细
-  temp/steamcn/samples-gap.md        缺口比对
+  temp/steamcn/samples-gap.md        与当前规则的覆盖比对（仅供参考）
+
+用法：
+  python research/tools/scan_samples.py              # 扫全部样本
+  python research/tools/scan_samples.py <样本目录>   # 只扫某个来源/日期目录
 """
 import os, re, json, io, sys
 from collections import OrderedDict
 
-ROOT = r'D:\Dev\SteamSPA'
-SCRIPTS = os.path.join(ROOT, 'scripts')
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SCRIPTS = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'research', 'samples')
 OUT_ART = os.path.join(ROOT, 'temp', 'steamcn', 'samples-artifacts.md')
 OUT_GAP = os.path.join(ROOT, 'temp', 'steamcn', 'samples-gap.md')
 
@@ -118,10 +124,8 @@ def scan(text):
     return res
 
 def rules():
-    p = os.path.join(ROOT, 'uninstall.ps1')
-    lines = io.open(p, encoding='utf-8', errors='replace').read().split('\n')
-    chunk = '\n'.join(lines[62:997])
-    cfg = json.loads(chunk)
+    p = os.path.join(ROOT, 'data', 'rules.json')
+    cfg = json.loads(io.open(p, encoding='utf-8').read())
     items = []
     for r in cfg['rules']:
         for a in r.get('actions', []):
@@ -133,6 +137,7 @@ def rules():
 
 def main():
     cfg, ritems = rules()
+    os.makedirs(os.path.dirname(OUT_ART), exist_ok=True)
     files = []
     for dirpath, _, names in os.walk(SCRIPTS):
         for n in sorted(names):
@@ -141,7 +146,7 @@ def main():
     files.sort()
 
     art = io.open(OUT_ART, 'w', encoding='utf-8')
-    art.write('# scripts/ 全部样本落地物扫描\n\n共 %d 个文件\n\n' % len(files))
+    art.write('# research/samples/ 完整路径清单\n\n共 %d 个文件\n\n' % len(files))
 
     sample_steam = []
     sample_reg = []
@@ -194,11 +199,12 @@ def main():
     covered = [n for n in s_all if n.lower() in rule_all]
 
     g = io.open(OUT_GAP, 'w', encoding='utf-8')
-    g.write('# 样本 vs uninstall.ps1 缺口\n\n')
+    g.write('# 样本路径 vs 当前规则\n\n')
+    g.write('> 这是完整路径清单的覆盖比对，包含读取路径和 Steam 官方文件；不是删除候选清单。\n\n')
     g.write('- 样本里出现的 Steam 根条目（去重）：**%d**\n' % len(s_all))
     g.write('- 规则已覆盖：**%d**\n' % len(covered))
-    g.write('- **缺口：%d**\n\n' % len(gap))
-    g.write('## 缺口清单（样本有 / 规则无）\n\n```\n')
+    g.write('- **未覆盖：%d**\n\n' % len(gap))
+    g.write('## 未覆盖路径（需人工判断）\n\n```\n')
     g.write('\n'.join(sorted(gap, key=str.lower)))
     g.write('\n```\n\n## 已覆盖\n\n```\n')
     g.write('\n'.join(sorted(covered, key=str.lower)))
