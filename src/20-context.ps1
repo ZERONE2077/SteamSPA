@@ -6,7 +6,6 @@ function ConvertFrom-SpaArguments {
     $options = @{
         Risk     = @('low', 'medium', 'high')
         Only     = @()
-        NoBackup = $false
         NoPause  = $false
         ScanOnly = $false
         Help     = $false
@@ -17,8 +16,11 @@ function ConvertFrom-SpaArguments {
 
     for ($i = 0; $i -lt $list.Count; $i++) {
         $name = [string]$list[$i]
-        if ($name -match '^-(NoBackup|NoPause|ScanOnly|Help|Elevated)$') {
+        if ($name -match '^-(NoPause|ScanOnly|Help|Elevated)$') {
             $options[$Matches[1]] = $true
+        }
+        elseif ($name -eq '-NoBackup') {
+            # 已不再备份，仍接受这个参数以兼容旧命令。
         }
         elseif ($name -match '^[-/](\?|h)$') {
             $options.Help = $true
@@ -51,7 +53,6 @@ function ConvertTo-SpaArgumentList {
     $out = @()
     if ($Options.Risk.Count -lt 3) { $out += '-Risk'; $out += ($Options.Risk -join ',') }
     if ($Options.Only.Count -gt 0) { $out += '-Only'; $out += ($Options.Only -join ',') }
-    if ($Options.NoBackup) { $out += '-NoBackup' }
     if ($Options.NoPause) { $out += '-NoPause' }
     return $out
 }

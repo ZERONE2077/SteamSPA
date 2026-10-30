@@ -36,7 +36,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create
 - `-ScanOnly`：只扫描并列出，不询问、不删除
 - `-Risk low,medium,high`：只处理指定风险级别的规则
 - `-Only rule-id,...`：只处理指定规则
-- `-NoBackup`：不创建清理备份（不推荐）
 - `-NoPause`：结束时不等待按键
 - `-Help`：显示帮助
 
@@ -49,14 +48,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create
 3. 扫描所有规则（只读），同一目标在多条规则里出现只算一次。
 4. 按类别列出发现项，标出 `[需确认]` 项；Valve 签名文件和受保护目录单独列出且不删除。
 5. 确认：`Y` 全部清理，`S` 只清理常规项（跳过 `[需确认]`），`N` 或回车取消。
-6. STEAM 正在运行时先关闭；先结束进程、删计划任务，再删文件和注册表；每项删除前先备份，备份失败则不删。
-7. 汇总结果和备份位置。
-
-## 备份与恢复
-
-备份在 `%LOCALAPPDATA%\SteamSPA\backups\<时间>\`：被删文件原样副本、注册表 `.reg` 导出、计划任务 XML、
-`manifest.json` 清单和 `restore.ps1`。运行 `restore.ps1` 可恢复文件、注册表和计划任务；
-Defender 排除项只记录在清单里，不自动恢复。
+6. STEAM 正在运行时先关闭；先结束进程、删计划任务，再删文件和注册表。清理对象都是非官方残留，不做备份。
+7. 汇总结果。
 
 ## 架构
 
@@ -66,7 +59,6 @@ data/rules.json + data/version.json
 src/10-ui.ps1        终端输出（唯一调用 Write-Host 的地方）
 src/20-context.ps1   参数、权限、STEAM 路径、路径模板、删除安全边界、提权
 src/30-targets.ps1   每种规则类型的“查找 / 删除”
-src/40-backup.ps1    清理前备份、restore.ps1
 src/50-history.ps1   PowerShell 历史线索
 src/90-main.ps1      主流程
       ↓
@@ -93,7 +85,6 @@ tools/build.ps1  →  uninstall.ps1（唯一对外分发产物，整体包在 & 
 - Valve 有效数字签名文件自动保护。
 - 非空目录、带子项的注册表项只在规则写明 `recurse` 时才整体删除。
 - Defender 不可用或无权读取时安全跳过并提示。
-- 默认创建清理备份，备份失败的项目不删除。
 
 ## 目录
 

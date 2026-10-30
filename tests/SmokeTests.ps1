@@ -56,11 +56,11 @@ Assert ($null -ne (Get-SpaUnsafePathReason '\hid.dll' $vars)) '拒绝相对路�
 Assert ($null -ne (Get-SpaUnsafePathReason 'D:\' $vars)) '拒绝磁盘根目录'
 Assert ($null -ne (Get-SpaUnsafePathReason $env:APPDATA $vars)) '拒绝 APPDATA 根目录'
 
-$o = ConvertFrom-SpaArguments @('-Risk', 'low,high', '-Only', 'a,b', '-NoBackup')
-Assert ((($o.Risk -join ',') -eq 'low,high') -and (($o.Only -join ',') -eq 'a,b') -and $o.NoBackup -and $o.Errors.Count -eq 0) '参数解析'
+$o = ConvertFrom-SpaArguments @('-Risk', 'low,high', '-Only', 'a,b', '-NoBackup', '-NoPause')
+Assert ((($o.Risk -join ',') -eq 'low,high') -and (($o.Only -join ',') -eq 'a,b') -and $o.NoPause -and $o.Errors.Count -eq 0) '参数解析（-NoBackup 兼容接受）'
 Assert ((ConvertFrom-SpaArguments @('-Risk', 'extreme')).Errors.Count -eq 1) '非法风险级别报错'
 Assert ((ConvertFrom-SpaArguments @('-Bogus')).Errors.Count -eq 1) '未知参数报错'
-Assert (((ConvertTo-SpaArgumentList $o) -join ' ') -eq '-Risk low,high -Only a,b -NoBackup') '参数还原（提权重启用）'
+Assert (((ConvertTo-SpaArgumentList $o) -join ' ') -eq '-Risk low,high -Only a,b -NoPause') '参数还原（提权重启用）'
 
 $clues = @(Find-SpaHistoryClues @(
         'git commit -m "confirm fix"',
@@ -76,7 +76,7 @@ Assert ($clues.Count -eq 3) ('历史线索命中 3 条（实际 ' + $clues.Count
 Assert ($clues -contains 'https://steamfn.com/a.ps1?token=***') '历史线索脱敏 token'
 Assert ((Get-DisplayWidth '中a') -eq 3) '中文显示宽度'
 
-Write-Host '== 沙盒：备份 -> 删除 -> 恢复（临时目录 + HKCU 测试键）'
+Write-Host '== 沙盒：删除（临时目录 + HKCU 测试键）'
 $sandbox = Join-Path $env:TEMP ('SteamSPA-test-' + [guid]::NewGuid().ToString('N'))
 $fakeSteam = Join-Path $sandbox 'Steam'
 $regKey = 'HKCU:\Software\SteamSPA-SmokeTest'
@@ -98,23 +98,14 @@ try {
     Assert ($targets.Count -eq 3) ('找到 3 个目标（实际 ' + $targets.Count + '）')
 
     $keyTarget = Find-SpaActionTargets ([pscustomobject]@{ type = 'registry-key'; path = $regKey }) $sv
-    $backup = New-SpaBackup -Enabled $true
-    $backup.Root = Join-Path $sandbox 'backup'
-    Remove-SpaTarget -Target $keyTarget -Backup $backup -Variables $sv
+    Remove-SpaTarget -Target $keyTarget -Variables $sv
     Assert ($keyTarget.Status -eq 'skipped' -and (Test-Path $regKey)) '有子项且未允许递归的注册表项不删'
 
-    foreach ($t in $targets) { Remove-SpaTarget -Target $t -Backup $backup -Variables $sv }
+    foreach ($t in $targets) { Remove-SpaTarget -Target $t -Variables $sv }
     Assert (@($targets | Where-Object { $_.Status -ne 'removed' }).Count -eq 0) ('全部删除成功 ' + (($targets | ForEach-Object { $_.Status + ':' + $_.Message }) -join ','))
     Assert (-not (Test-Path (Join-Path $fakeSteam 'hid.dll')) -and -not (Test-Path (Join-Path $fakeSteam 'Core'))) '文件和目录已删除'
     Assert ($null -eq (Get-ItemProperty -LiteralPath $regKey -Name 'iscdkey' -ErrorAction SilentlyContinue)) '注册表值已删除'
 
-    $SteamSPAReleaseVersion = 'test'
-    $backupPath = Complete-SpaBackup -Backup $backup
-    Assert ((Test-Path (Join-Path $backupPath 'manifest.json')) -and (Test-Path (Join-Path $backupPath 'restore.ps1'))) '生成 manifest.json 和 restore.ps1'
-
-    '' | & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $backupPath 'restore.ps1') | Out-Null
-    Assert ((Test-Path (Join-Path $fakeSteam 'hid.dll')) -and (Test-Path (Join-Path $fakeSteam 'Core\a.txt'))) 'restore.ps1 恢复文件和目录'
-    Assert ($null -ne (Get-ItemProperty -LiteralPath $regKey -Name 'iscdkey' -ErrorAction SilentlyContinue)) 'restore.ps1 恢复注册表值'
 }
 finally {
     Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue

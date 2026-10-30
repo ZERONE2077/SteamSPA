@@ -1299,7 +1299,6 @@ function ConvertFrom-SpaArguments {
     $options = @{
         Risk     = @('low', 'medium', 'high')
         Only     = @()
-        NoBackup = $false
         NoPause  = $false
         ScanOnly = $false
         Help     = $false
@@ -1310,8 +1309,11 @@ function ConvertFrom-SpaArguments {
 
     for ($i = 0; $i -lt $list.Count; $i++) {
         $name = [string]$list[$i]
-        if ($name -match '^-(NoBackup|NoPause|ScanOnly|Help|Elevated)$') {
+        if ($name -match '^-(NoPause|ScanOnly|Help|Elevated)$') {
             $options[$Matches[1]] = $true
+        }
+        elseif ($name -eq '-NoBackup') {
+            # 已不再备份，仍接受这个参数以兼容旧命令。
         }
         elseif ($name -match '^[-/](\?|h)$') {
             $options.Help = $true
@@ -1344,7 +1346,6 @@ function ConvertTo-SpaArgumentList {
     $out = @()
     if ($Options.Risk.Count -lt 3) { $out += '-Risk'; $out += ($Options.Risk -join ',') }
     if ($Options.Only.Count -gt 0) { $out += '-Only'; $out += ($Options.Only -join ',') }
-    if ($Options.NoBackup) { $out += '-NoBackup' }
     if ($Options.NoPause) { $out += '-NoPause' }
     return $out
 }
@@ -1479,7 +1480,7 @@ function Start-SpaElevated {
 # SteamSPA · 清理目标
 # 每种规则动作类型在这里实现两件事：
 #   Find-SpaActionTargets  把规则动作解析成本机上真实存在的目标（只读）
-#   Remove-SpaTarget       删除一个目标（之前先交给备份模块）
+#   Remove-SpaTarget       删除一个目标
 # 同一个物理目标在多条规则里出现时，用 Key 去重，只显示和删除一次。
 
 function Get-SpaSupportedTypes {
@@ -1714,7 +1715,7 @@ function Set-SpaResult {
 }
 
 function Remove-SpaTarget {
-    param($Target, [hashtable]$Backup, [hashtable]$Variables)
+    param($Target, [hashtable]$Variables)
 
     $d = $Target.Data
     try {
@@ -1731,10 +1732,6 @@ function Remove-SpaTarget {
         if ($Target.Type -eq 'registry-key' -and -not $Target.Recurse) {
             $key = Get-Item -LiteralPath $d.Path -ErrorAction SilentlyContinue
             if ($key -and $key.SubKeyCount -gt 0) { return Set-SpaResult $Target 'skipped' '含子项，规则未允许整项删除' }
-        }
-
-        if (-not (Save-SpaBackupItem -Backup $Backup -Target $Target)) {
-            return Set-SpaResult $Target 'failed' '备份失败，为安全起见未删除'
         }
 
         switch ($Target.Type) {
@@ -1771,132 +1768,6 @@ function Remove-SpaTarget {
     catch {
         Set-SpaResult $Target 'failed' (Get-SpaErrorText $_)
     }
-}
-
-# SteamSPA · 清理前备份
-# 备份目录：%LOCALAPPDATA%\SteamSPA\backups\<时间>\
-#   files\C\...       被删文件/目录的原样副本
-#   registry\*.reg    被删注册表项（或值所在项）的 reg export
-#   tasks\*.xml       被删计划任务的定义
-#   manifest.json     清单
-#   restore.ps1       一键恢复（文件、注册表、计划任务；Defender 排除项只记录不恢复）
-
-function New-SpaBackup {
-    param([bool]$Enabled)
-    $base = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $env:TEMP }
-    return @{
-        Enabled  = $Enabled
-        Root     = Join-Path $base ('SteamSPA\backups\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-        Entries  = New-Object System.Collections.Generic.List[object]
-        Exported = @{}
-        Counter  = 0
-    }
-}
-
-function Get-SpaBackupFile {
-    param([hashtable]$Backup, [string]$Folder, [string]$Extension)
-    $Backup.Counter++
-    $dir = Join-Path $Backup.Root $Folder
-    [IO.Directory]::CreateDirectory($dir) | Out-Null
-    return Join-Path $Folder ('{0:D3}{1}' -f $Backup.Counter, $Extension)
-}
-
-function Export-SpaRegistryKey {
-    param([hashtable]$Backup, [string]$Path, [string]$Label)
-    $key = $Path -replace '^(HK[A-Z_]+):\\?', '$1\'
-    if ($Backup.Exported.ContainsKey($key)) { return $true }
-    $relative = Get-SpaBackupFile -Backup $Backup -Folder 'registry' -Extension '.reg'
-    & reg.exe export $key (Join-Path $Backup.Root $relative) /y 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { return $false }
-    $Backup.Exported[$key] = $true
-    $Backup.Entries.Add([ordered]@{ type = 'registry'; label = $Label; key = $key; file = $relative })
-    return $true
-}
-
-# 返回 $true 表示可以继续删除（已备份，或无需/未启用备份）。
-function Save-SpaBackupItem {
-    param([hashtable]$Backup, $Target)
-    if (-not $Backup.Enabled) { return $true }
-
-    $d = $Target.Data
-    try {
-        switch -Wildcard ($Target.Type) {
-            'file' {
-                $relative = Join-Path 'files' ($d.Path -replace '^([A-Za-z]):\\', '$1\')
-                $dest = Join-Path $Backup.Root $relative
-                [IO.Directory]::CreateDirectory((Split-Path -Parent $dest)) | Out-Null
-                Copy-Item -LiteralPath $d.Path -Destination $dest -Recurse -Force -ErrorAction Stop
-                $Backup.Entries.Add([ordered]@{ type = 'file'; label = $Target.Label; source = $d.Path; file = $relative })
-            }
-            'registry-*' {
-                if (-not (Export-SpaRegistryKey -Backup $Backup -Path $d.Path -Label $Target.Label)) { return $false }
-            }
-            'defender-*' {
-                $Backup.Entries.Add([ordered]@{ type = 'defender'; label = $Target.Label; kind = $d.Kind; values = @($d.Values) })
-            }
-            'task' {
-                $service = New-Object -ComObject Schedule.Service
-                $service.Connect()
-                $xml = $service.GetFolder($d.Folder).GetTask($d.Name).Xml
-                $relative = Get-SpaBackupFile -Backup $Backup -Folder 'tasks' -Extension '.xml'
-                [IO.File]::WriteAllText((Join-Path $Backup.Root $relative), $xml, [Text.Encoding]::Unicode)
-                $Backup.Entries.Add([ordered]@{ type = 'task'; label = $Target.Label; name = $d.Path; file = $relative })
-            }
-        }
-        return $true
-    }
-    catch {
-        return $false
-    }
-}
-
-function Complete-SpaBackup {
-    param([hashtable]$Backup)
-    if (-not $Backup.Enabled -or $Backup.Entries.Count -eq 0) { return $null }
-
-    $utf8 = New-Object System.Text.UTF8Encoding($true)
-    $manifest = [ordered]@{
-        tool      = 'SteamSPA'
-        version   = $SteamSPAReleaseVersion
-        createdAt = (Get-Date).ToString('o')
-        entries   = $Backup.Entries.ToArray()   # PS 5.1 下 @(List) 放进 [ordered] 会抛 Argument types do not match
-    }
-    [IO.File]::WriteAllText((Join-Path $Backup.Root 'manifest.json'), ($manifest | ConvertTo-Json -Depth 5), $utf8)
-    [IO.File]::WriteAllText((Join-Path $Backup.Root 'restore.ps1'), (Get-SpaRestoreScript), $utf8)
-    return $Backup.Root
-}
-
-function Get-SpaRestoreScript {
-    return @'
-# SteamSPA 恢复脚本：把本目录里备份的文件、注册表、计划任务放回原处。
-# 用法：右键 -> 使用 PowerShell 运行（需要管理员权限恢复系统注册表和计划任务）。
-# Defender 排除项不会自动恢复，清单里有记录，如确有需要请手动添加。
-$base = Split-Path -Parent $MyInvocation.MyCommand.Path
-$manifest = Get-Content -LiteralPath (Join-Path $base 'manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-foreach ($e in @($manifest.entries)) {
-    try {
-        if ($e.type -eq 'file') {
-            if (Test-Path -LiteralPath $e.source) { Write-Host ('已存在，跳过: ' + $e.source); continue }
-            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $e.source) | Out-Null
-            Copy-Item -LiteralPath (Join-Path $base $e.file) -Destination $e.source -Recurse -Force -ErrorAction Stop
-        }
-        elseif ($e.type -eq 'registry') {
-            & reg.exe import (Join-Path $base $e.file) 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw 'reg import 失败' }
-        }
-        elseif ($e.type -eq 'task') {
-            & schtasks.exe /Create /TN $e.name /XML (Join-Path $base $e.file) /F 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw 'schtasks 失败' }
-        }
-        else { Write-Host ('未自动恢复: ' + $e.label); continue }
-        Write-Host ('已恢复: ' + $e.label)
-    }
-    catch {
-        Write-Host ('恢复失败: ' + $e.label + ' - ' + $_.Exception.Message) -ForegroundColor Red
-    }
-}
-Read-Host '完成，按回车退出' | Out-Null
-'@
 }
 
 # SteamSPA · PowerShell 历史线索
@@ -1985,16 +1856,15 @@ function Find-SpaHistoryClues {
 #   本机信息 -> 扫描（只读）-> 扫描结果 -> 历史线索
 #   -> 没发现：结束（普通权限时可选"以管理员身份完整检查"）
 #   -> 发现了：普通权限 -> 打开管理员窗口重新扫描
-#              管理员   -> 清理前须知 -> 一次确认 -> 关闭 STEAM -> 备份并清理 -> 汇总
+#              管理员   -> 清理前须知 -> 一次确认 -> 关闭 STEAM -> 清理 -> 汇总
 #   -> 结束（关闭过 STEAM 时可选"重新打开 STEAM"）
 
 function Show-SpaHelp {
-    Write-Ui '用法：uninstall.ps1 [-ScanOnly] [-Risk low,medium,high] [-Only 规则ID,...] [-NoBackup] [-NoPause]'
+    Write-Ui '用法：uninstall.ps1 [-ScanOnly] [-Risk low,medium,high] [-Only 规则ID,...] [-NoPause]'
     Write-Ui ''
     Write-Ui '  -ScanOnly   只扫描并列出，不询问、不删除'
     Write-Ui '  -Risk       只处理指定风险级别的规则（默认全部）'
     Write-Ui '  -Only       只处理指定 ID 的规则'
-    Write-Ui '  -NoBackup   清理前不备份（不推荐）'
     Write-Ui '  -NoPause    结束时不等待回车'
     Write-Ui ''
     Write-Ui '退出码：0 正常  1 部分失败  2 参数错误  4 用户取消  5 需要管理员'
@@ -2184,7 +2054,6 @@ function Read-SpaCleanupDecision {
     Write-UiNote '请先保存游戏进度、退出正在运行的游戏，并暂停 STEAM 下载和更新。' -Important
     Write-UiNote '清理后可能需要重新登录 STEAM：请确认记得账号、密码，手机令牌可用。' -Important
     Write-UiNote '不影响游戏本体、存档、创意工坊和 MOD（这些目录被硬性排除）。'
-    Write-UiNote '每一项删除前都会备份，出问题可以一键恢复。'
     Write-UiNote '清理失败时，请暂时退出杀毒软件后重试。'
     Write-UiNote '清理后首次打开 STEAM 可能较慢，建议开启加速器，耐心等几分钟。'
 
@@ -2223,9 +2092,8 @@ function Invoke-SpaCleanup {
     # 先结束进程、删计划任务，避免它们在清理过程中把文件写回来。
     $order = @{ process = 0; task = 1; file = 2; 'registry-key' = 3; 'registry-value' = 4 }
     $ordered = @($Selected | Sort-Object { if ($order.ContainsKey($_.Type)) { $order[$_.Type] } else { 5 } })
-    $backup = New-SpaBackup -Enabled (-not $Spa.Options.NoBackup)
     foreach ($t in $ordered) {
-        Remove-SpaTarget -Target $t -Backup $backup -Variables $Variables
+        Remove-SpaTarget -Target $t -Variables $Variables
         $label = Format-SpaLabel $t.Label
         switch ($t.Status) {
             'removed' { Write-UiResult $(if ($t.Type -eq 'process') { '已结束' } else { '已清理' }) $label Success }
@@ -2233,11 +2101,10 @@ function Invoke-SpaCleanup {
             default { Write-UiResult '失败' ($label + '  (' + $t.Message + ')') Danger }
         }
     }
-    return (Complete-SpaBackup -Backup $backup)
 }
 
 function Show-SpaSummary {
-    param([object[]]$Items, [string]$BackupPath, [datetime]$StartedAt)
+    param([object[]]$Items, [datetime]$StartedAt)
 
     $removed = @($Items | Where-Object { $_.Status -eq 'removed' }).Count
     $failed = @($Items | Where-Object { $_.Status -eq 'failed' }).Count
@@ -2249,10 +2116,6 @@ function Show-SpaSummary {
     Write-UiKeyValue '已清理' ([string]$removed) Success
     if ($failed) { Write-UiKeyValue '失败' ([string]$failed) Danger }
     if ($skipped) { Write-UiKeyValue '跳过' ([string]$skipped) Muted }
-    if ($BackupPath) {
-        Write-UiKeyValue '备份' $BackupPath Path
-        Write-UiKeyValue '恢复' '运行备份目录里的 restore.ps1' Muted
-    }
     Write-UiKeyValue '耗时' ('{0:N1} 秒' -f ((Get-Date) - $StartedAt).TotalSeconds) Muted
 }
 
@@ -2334,8 +2197,8 @@ function Invoke-SpaMain {
         Write-UiSection '已取消' '已取消清理，没有做任何修改' Warning
         return 4
     }
-    $backupPath = Invoke-SpaCleanup -Selected @($selected) -Variables $variables -SteamRunning $steamRunning
-    Show-SpaSummary -Items $items -BackupPath $backupPath -StartedAt $startedAt
+    Invoke-SpaCleanup -Selected @($selected) -Variables $variables -SteamRunning $steamRunning
+    Show-SpaSummary -Items $items -StartedAt $startedAt
     Read-SpaExit -SteamPath $variables.SteamPath -OfferSteam $steamRunning
     if (@($items | Where-Object { $_.Status -eq 'failed' }).Count -gt 0) { return 1 }
     return 0

@@ -2,16 +2,15 @@
 #   本机信息 -> 扫描（只读）-> 扫描结果 -> 历史线索
 #   -> 没发现：结束（普通权限时可选"以管理员身份完整检查"）
 #   -> 发现了：普通权限 -> 打开管理员窗口重新扫描
-#              管理员   -> 清理前须知 -> 一次确认 -> 关闭 STEAM -> 备份并清理 -> 汇总
+#              管理员   -> 清理前须知 -> 一次确认 -> 关闭 STEAM -> 清理 -> 汇总
 #   -> 结束（关闭过 STEAM 时可选"重新打开 STEAM"）
 
 function Show-SpaHelp {
-    Write-Ui '用法：uninstall.ps1 [-ScanOnly] [-Risk low,medium,high] [-Only 规则ID,...] [-NoBackup] [-NoPause]'
+    Write-Ui '用法：uninstall.ps1 [-ScanOnly] [-Risk low,medium,high] [-Only 规则ID,...] [-NoPause]'
     Write-Ui ''
     Write-Ui '  -ScanOnly   只扫描并列出，不询问、不删除'
     Write-Ui '  -Risk       只处理指定风险级别的规则（默认全部）'
     Write-Ui '  -Only       只处理指定 ID 的规则'
-    Write-Ui '  -NoBackup   清理前不备份（不推荐）'
     Write-Ui '  -NoPause    结束时不等待回车'
     Write-Ui ''
     Write-Ui '退出码：0 正常  1 部分失败  2 参数错误  4 用户取消  5 需要管理员'
@@ -201,7 +200,6 @@ function Read-SpaCleanupDecision {
     Write-UiNote '请先保存游戏进度、退出正在运行的游戏，并暂停 STEAM 下载和更新。' -Important
     Write-UiNote '清理后可能需要重新登录 STEAM：请确认记得账号、密码，手机令牌可用。' -Important
     Write-UiNote '不影响游戏本体、存档、创意工坊和 MOD（这些目录被硬性排除）。'
-    Write-UiNote '每一项删除前都会备份，出问题可以一键恢复。'
     Write-UiNote '清理失败时，请暂时退出杀毒软件后重试。'
     Write-UiNote '清理后首次打开 STEAM 可能较慢，建议开启加速器，耐心等几分钟。'
 
@@ -240,9 +238,8 @@ function Invoke-SpaCleanup {
     # 先结束进程、删计划任务，避免它们在清理过程中把文件写回来。
     $order = @{ process = 0; task = 1; file = 2; 'registry-key' = 3; 'registry-value' = 4 }
     $ordered = @($Selected | Sort-Object { if ($order.ContainsKey($_.Type)) { $order[$_.Type] } else { 5 } })
-    $backup = New-SpaBackup -Enabled (-not $Spa.Options.NoBackup)
     foreach ($t in $ordered) {
-        Remove-SpaTarget -Target $t -Backup $backup -Variables $Variables
+        Remove-SpaTarget -Target $t -Variables $Variables
         $label = Format-SpaLabel $t.Label
         switch ($t.Status) {
             'removed' { Write-UiResult $(if ($t.Type -eq 'process') { '已结束' } else { '已清理' }) $label Success }
@@ -250,11 +247,10 @@ function Invoke-SpaCleanup {
             default { Write-UiResult '失败' ($label + '  (' + $t.Message + ')') Danger }
         }
     }
-    return (Complete-SpaBackup -Backup $backup)
 }
 
 function Show-SpaSummary {
-    param([object[]]$Items, [string]$BackupPath, [datetime]$StartedAt)
+    param([object[]]$Items, [datetime]$StartedAt)
 
     $removed = @($Items | Where-Object { $_.Status -eq 'removed' }).Count
     $failed = @($Items | Where-Object { $_.Status -eq 'failed' }).Count
@@ -266,10 +262,6 @@ function Show-SpaSummary {
     Write-UiKeyValue '已清理' ([string]$removed) Success
     if ($failed) { Write-UiKeyValue '失败' ([string]$failed) Danger }
     if ($skipped) { Write-UiKeyValue '跳过' ([string]$skipped) Muted }
-    if ($BackupPath) {
-        Write-UiKeyValue '备份' $BackupPath Path
-        Write-UiKeyValue '恢复' '运行备份目录里的 restore.ps1' Muted
-    }
     Write-UiKeyValue '耗时' ('{0:N1} 秒' -f ((Get-Date) - $StartedAt).TotalSeconds) Muted
 }
 
@@ -351,8 +343,8 @@ function Invoke-SpaMain {
         Write-UiSection '已取消' '已取消清理，没有做任何修改' Warning
         return 4
     }
-    $backupPath = Invoke-SpaCleanup -Selected @($selected) -Variables $variables -SteamRunning $steamRunning
-    Show-SpaSummary -Items $items -BackupPath $backupPath -StartedAt $startedAt
+    Invoke-SpaCleanup -Selected @($selected) -Variables $variables -SteamRunning $steamRunning
+    Show-SpaSummary -Items $items -StartedAt $startedAt
     Read-SpaExit -SteamPath $variables.SteamPath -OfferSteam $steamRunning
     if (@($items | Where-Object { $_.Status -eq 'failed' }).Count -gt 0) { return 1 }
     return 0

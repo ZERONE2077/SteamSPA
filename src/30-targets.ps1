@@ -1,7 +1,7 @@
 ﻿# SteamSPA · 清理目标
 # 每种规则动作类型在这里实现两件事：
 #   Find-SpaActionTargets  把规则动作解析成本机上真实存在的目标（只读）
-#   Remove-SpaTarget       删除一个目标（之前先交给备份模块）
+#   Remove-SpaTarget       删除一个目标
 # 同一个物理目标在多条规则里出现时，用 Key 去重，只显示和删除一次。
 
 function Get-SpaSupportedTypes {
@@ -236,7 +236,7 @@ function Set-SpaResult {
 }
 
 function Remove-SpaTarget {
-    param($Target, [hashtable]$Backup, [hashtable]$Variables)
+    param($Target, [hashtable]$Variables)
 
     $d = $Target.Data
     try {
@@ -253,10 +253,6 @@ function Remove-SpaTarget {
         if ($Target.Type -eq 'registry-key' -and -not $Target.Recurse) {
             $key = Get-Item -LiteralPath $d.Path -ErrorAction SilentlyContinue
             if ($key -and $key.SubKeyCount -gt 0) { return Set-SpaResult $Target 'skipped' '含子项，规则未允许整项删除' }
-        }
-
-        if (-not (Save-SpaBackupItem -Backup $Backup -Target $Target)) {
-            return Set-SpaResult $Target 'failed' '备份失败，为安全起见未删除'
         }
 
         switch ($Target.Type) {
