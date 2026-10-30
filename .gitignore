@@ -19,3 +19,6 @@ desktop.ini
 # Keep in the working tree, never publish.
 /research/docs/
 /research/samples/
+
+# Local double-click test shortcuts (machine-specific paths)
+/*.lnk
