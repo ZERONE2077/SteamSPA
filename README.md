@@ -9,9 +9,13 @@ SteamSPA 是一个 Windows PowerShell 工具，用于识别、展示并清理 St
 
 ### 快捷方式（推荐给普通用户）
 
-`tools/make-link.ps1` 生成 `Steam Spa 清理工具.lnk`，双击即可。命令是明文：
-依次尝试国内镜像和 GitHub，下载到 `%TEMP%\SteamSPA.ps1` 后运行。
-快捷方式不用勾"以管理员身份运行"，需要时脚本会自己申请。
+`tools/make-link.ps1` 在仓库根目录生成三个快捷方式（`*.lnk` 不进仓库）：
+
+- `Steam Spa 清理工具.lnk`：对外分发。依次尝试 jsDelivr 官方节点、国内镜像、GitHub，下载到 `%TEMP%\SteamSPA.ps1` 后运行。
+- `Steam Spa 清理工具（GitHub）.lnk`：只从 GitHub 取最新版，验证刚推送的内容。
+- `Steam Spa 清理工具（本地）.lnk`：运行本仓库的 `uninstall.ps1`，发布前自测。
+
+命令都是明文。快捷方式已勾"以管理员身份运行"，双击后点一次 UAC 的"是"即可；装了 Windows Terminal 的会自动换到 Windows Terminal 里运行。
 
 ### 复制到 PowerShell 运行
 
@@ -65,7 +69,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 `defender-exclusion-extension`、`defender-exclusion-process`、`process`、`task`、`task-contains`。
 
 `publish.ps1` 会把脚本里的更新日期改成当天，测试通过后提交推送，并核对线上版本。
-根目录的 `.lnk`（不进仓库）通过 `tools/launch.ps1` 分别试跑本地、GitHub、jsDelivr 三种来源。
+本地试跑用 `tools/make-link.ps1` 生成的三个快捷方式（本地 / GitHub / 镜像）。
 
 ## 安全设计
 
@@ -83,8 +87,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 uninstall.ps1        整个工具（程序 + 规则），唯一对外分发的文件
 tests/SmokeTests.ps1 冒烟测试
 tools/publish.ps1    发布
-tools/launch.ps1     本机试跑
-tools/make-link.ps1  生成对外分发的快捷方式
+tools/make-link.ps1  生成快捷方式（分发 / GitHub / 本地）
 ```
 
 Windows PowerShell 5.1+，无需第三方模块。
