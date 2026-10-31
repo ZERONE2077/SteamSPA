@@ -91,6 +91,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $fakeSteam 'Core\a.txt'), 'a')
     New-Item -Path $regKey -Force | Out-Null
     New-ItemProperty -Path $regKey -Name 'iscdkey' -Value '1' -Force | Out-Null
+    New-ItemProperty -Path $regKey -Name 'SmartScreenEnabled' -Value 'Warn' -Force | Out-Null
     New-Item -Path ($regKey + '\Sub') -Force | Out-Null
 
     $sv = @{ SteamPath = $fakeSteam }
@@ -101,6 +102,8 @@ try {
         Find-SpaActionTargets ([pscustomobject]@{ type = 'registry-value'; path = $regKey; name = 'iscdkey' }) $sv
     )
     Assert ($targets.Count -eq 3) ('找到 3 个目标（实际 ' + $targets.Count + '）')
+    $ss = { param($v) @(Find-SpaActionTargets ([pscustomobject]@{ type = 'registry-value'; path = $regKey; name = 'SmartScreenEnabled'; values = @($v) }) $sv).Count }
+    Assert ((& $ss 'Off') -eq 0 -and (& $ss 'Warn') -eq 1) '注册表值按 values 匹配（Warn 不算残留）'
 
     $keyTarget = Find-SpaActionTargets ([pscustomobject]@{ type = 'registry-key'; path = $regKey }) $sv
     Remove-SpaTarget -Target $keyTarget -Variables $sv

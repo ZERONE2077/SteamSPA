@@ -3,7 +3,7 @@
 # 整个程序包在 & { } 里运行：irm | iex 时不会在用户会话里留下函数和变量。
 & {
 $SteamSPAReleaseVersion = '4.0'
-$SteamSPAUpdatedAt = '2026-10-30'
+$SteamSPAUpdatedAt = '2026-10-31'
 
 # 规则库：id 不要改（-Only 参数用它）；路径只写样本实际写入的精确位置。
 $EmbeddedTargetsJson = @'
@@ -140,10 +140,6 @@ $EmbeddedTargetsJson = @'
                 },
                 {
                     "type": "file",
-                    "path": "${SteamPath}\\video.dll"
-                },
-                {
-                    "type": "file",
                     "path": "${SteamPath}\\CefResource\\locales\\ff\\core.dll"
                 },
                 {
@@ -162,7 +158,7 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "sample-47-100-121-251",
-            "title": "Unialls 假入库家族残留 (需确认)",
+            "title": "Unialls 假入库家族残留",
             "sources": [
                 "research/samples/47.100.121.251/47.100.121.251.ps1",
                 "research/samples/47.98.148.132/47.98.148.132.ps1",
@@ -173,7 +169,6 @@ $EmbeddedTargetsJson = @'
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "file",
@@ -230,14 +225,13 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "unialls-sdko-loader",
-            "title": "Unialls sdko 假入库加载器 (需确认)",
+            "title": "Unialls sdko 假入库加载器",
             "sources": [
                 "research/samples/139.196.146.200/139.196.146.200.ps1",
                 "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "file",
@@ -433,7 +427,6 @@ $EmbeddedTargetsJson = @'
             ],
             "enabled": false,
             "risk": "medium",
-            "confirm": true,
             "actions": [
                 {
                     "type": "file",
@@ -510,7 +503,7 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "defender-exclusions",
-            "title": "Windows Defender 排除项 (需确认)",
+            "title": "Windows Defender 排除项",
             "sources": [
                 "research/samples/steam-run.com/142785900.001.ps1",
                 "research/samples/steam-run.com/steam-run.com.001.ps1",
@@ -531,7 +524,6 @@ $EmbeddedTargetsJson = @'
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "defender-exclusion-path",
@@ -613,24 +605,21 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "smartscreen-ci-policy-registry",
-            "title": "SmartScreen / CI Policy 相关注册表改动 (需确认)",
+            "title": "SmartScreen 被关闭",
             "sources": [
                 "research/samples/cdk.ruku.run/a.ps1",
                 "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "registry-value",
-                    "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy",
-                    "name": "VerifiedAndReputablePolicyState"
-                },
-                {
-                    "type": "registry-value",
                     "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer",
-                    "name": "SmartScreenEnabled"
+                    "name": "SmartScreenEnabled",
+                    "values": [
+                        "Off"
+                    ]
                 },
                 {
                     "type": "registry-value",
@@ -656,14 +645,13 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "startup-steamauthdaemon",
-            "title": "启动项 SteamAuthDaemon (需确认)",
+            "title": "启动项 SteamAuthDaemon",
             "sources": [
                 "research/samples/cdk.ruku.run/a.ps1",
                 "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "medium",
-            "confirm": true,
             "actions": [
                 {
                     "type": "registry-value",
@@ -674,14 +662,13 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "process-steam-auth",
-            "title": "steam_auth 进程 (需确认)",
+            "title": "steam_auth 进程",
             "sources": [
                 "research/samples/cdk.ruku.run/a.ps1",
                 "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "medium",
-            "confirm": true,
             "actions": [
                 {
                     "type": "process",
@@ -691,14 +678,13 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "downloaded-steamcdk-exe",
-            "title": "STEAM 目录下载的 steamcdk.exe (需确认)",
+            "title": "STEAM 目录下载的 steamcdk.exe",
             "sources": [
                 "research/samples/cdk.ruku.run/a.ps1",
                 "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "file",
@@ -737,14 +723,13 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "opensteamtool-lua-config",
-            "title": "OpenSteamTool Lua 配置目录 (需确认，默认禁用)",
+            "title": "OpenSteamTool Lua 配置目录 (默认禁用)",
             "sources": [
                 "https://github.com/OpenSteam001/OpenSteamTool",
                 "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
             ],
             "enabled": false,
             "risk": "medium",
-            "confirm": true,
             "actions": [
                 {
                     "type": "file",
@@ -755,13 +740,12 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "steamking-installed-app",
-            "title": "SteamKing 安装本体残留 (需确认)",
+            "title": "SteamKing 安装本体残留",
             "sources": [
                 "SteamKing-Setup-1.5.3.exe (local sample, not archived)"
             ],
             "enabled": true,
             "risk": "medium",
-            "confirm": true,
             "actions": [
                 {
                     "type": "process",
@@ -786,13 +770,12 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "steam-extra-exes",
-            "title": "STEAM 目录新增可执行文件 (需确认)",
+            "title": "STEAM 目录新增可执行文件",
             "sources": [
                 "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "file",
@@ -802,14 +785,13 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "rival-residue-steam-root",
-            "title": "竞品残留：假入库竞品 DLL / 目录 (需确认)",
+            "title": "竞品残留：假入库竞品 DLL / 目录",
             "sources": [
                 "research/samples/steamcn.cc/steamcn.cc.001.ps1",
                 "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "file",
@@ -906,7 +888,7 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "fake-library-team-steam-root-artifacts",
-            "title": "假入库团队 powershell2 根目录残留 (需确认；游戏素材包已排除)",
+            "title": "假入库团队 powershell2 根目录残留 (游戏素材包已排除)",
             "sources": [
                 "https://gitee.com/mrsiyecao/powershell2",
                 "research/samples/mrsiyecao-powershell2/2.ps1",
@@ -915,7 +897,6 @@ $EmbeddedTargetsJson = @'
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "file",
@@ -977,13 +958,12 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "steam-apps-manifest-registry",
-            "title": "STEAM Apps Manifest 注册表项 (需确认)",
+            "title": "STEAM Apps Manifest 注册表项",
             "sources": [
                 "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "registry-key",
@@ -999,53 +979,6 @@ $EmbeddedTargetsJson = @'
                     "type": "registry-key",
                     "path": "HKCU:\\Software\\Valve\\Steam\\Apps\\3218580",
                     "recurse": true
-                }
-            ]
-        },
-        {
-            "id": "windows-update-pause-policy",
-            "title": "Windows Update 暂停更新策略 (需确认)",
-            "sources": [
-                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
-            ],
-            "enabled": true,
-            "risk": "high",
-            "confirm": true,
-            "actions": [
-                {
-                    "type": "registry-value",
-                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                    "name": "FlightSettingsMaxPauseDays"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                    "name": "PauseFeatureUpdatesStartTime"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                    "name": "PauseFeatureUpdatesEndTime"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                    "name": "PauseQualityUpdatesStartTime"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                    "name": "PauseQualityUpdatesEndTime"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                    "name": "PauseUpdatesStartTime"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings",
-                    "name": "PauseUpdatesExpiryTime"
                 }
             ]
         },
@@ -1072,13 +1005,12 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "stool-scheduled-tasks",
-            "title": "%APPDATA%\\\\Stool 相关计划任务 (需确认)",
+            "title": "%APPDATA%\\\\Stool 相关计划任务",
             "sources": [
                 "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
             ],
             "enabled": true,
             "risk": "high",
-            "confirm": true,
             "actions": [
                 {
                     "type": "task-contains",
@@ -1302,13 +1234,15 @@ function ConvertFrom-SpaArguments {
         ScanOnly = $false
         Help     = $false
         Elevated = $false
+        InTerminal = $false
+        NoTerminal = $false
         Errors   = @()
     }
     $list = @($Arguments)
 
     for ($i = 0; $i -lt $list.Count; $i++) {
         $name = [string]$list[$i]
-        if ($name -match '^-(NoPause|ScanOnly|Help|Elevated)$') {
+        if ($name -match '^-(NoPause|ScanOnly|Help|Elevated|InTerminal|NoTerminal)$') {
             $options[$Matches[1]] = $true
         }
         elseif ($name -eq '-NoBackup') {
@@ -1454,10 +1388,11 @@ function Get-SpaUnsafePathReason {
     return $null
 }
 
-# 以管理员身份在新窗口重新运行。脚本源码取自当前调用，
+# 在新窗口重新运行自己。脚本源码取自当前调用，
 # 所以 irm | iex 和本地文件两种方式都能用，不需要重新下载。
-function Start-SpaElevated {
-    param([string]$SelfText, [hashtable]$Options)
+# 装了 Windows Terminal 就用它打开（字体和用户平时的终端一致），否则用 powershell.exe。
+function Start-SpaSelf {
+    param([string]$SelfText, [hashtable]$Options, [string[]]$Extra, [switch]$RunAs, [switch]$TerminalOnly)
 
     if ([string]::IsNullOrWhiteSpace($SelfText)) { return $false }
     try {
@@ -1466,14 +1401,62 @@ function Start-SpaElevated {
         $file = Join-Path $dir ('SteamSPA-' + [guid]::NewGuid().ToString('N') + '.ps1')
         [IO.File]::WriteAllText($file, $SelfText, (New-Object System.Text.UTF8Encoding($true)))
 
-        $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $file + '"'), '-Elevated')
+        $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $file + '"')) + @($Extra)
         $argList += @(ConvertTo-SpaArgumentList $Options | ForEach-Object { '"' + $_ + '"' })
-        Start-Process -FilePath 'powershell.exe' -ArgumentList $argList -Verb RunAs -ErrorAction Stop | Out-Null
+        $verb = @{}
+        if ($RunAs) { $verb.Verb = 'RunAs' }
+        if (Get-Command -Name 'wt.exe' -CommandType Application -ErrorAction SilentlyContinue) {
+            try {
+                $wtArgs = @('-w', 'new', 'powershell.exe') + $argList + @('-InTerminal')
+                Start-Process -FilePath 'wt.exe' -ArgumentList $wtArgs @verb -ErrorAction Stop | Out-Null
+                return $true
+            }
+            catch {
+                # UAC 里点了"否"就不再弹第二次。
+                if ($RunAs -and $_.Exception.Message -match '(?i)cancel|取消') { return $false }
+            }
+        }
+        if ($TerminalOnly) { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue; return $false }
+        Start-Process -FilePath 'powershell.exe' -ArgumentList $argList @verb -ErrorAction Stop | Out-Null
         return $true
     }
     catch {
         return $false
     }
+}
+
+function Start-SpaElevated {
+    param([string]$SelfText, [hashtable]$Options)
+    return Start-SpaSelf -SelfText $SelfText -Options $Options -Extra @('-Elevated') -RunAs
+}
+
+# 管理员窗口不能交给 Windows Terminal 显示（系统限制），会退回老式 conhost 窗口，
+# 字体是新宋体 / Lucida Console。这里在老窗口里检测到 wt.exe 时，改用 Windows Terminal 重开自己。
+# 成功返回 $true，本窗口随后直接结束。
+function Move-SpaToTerminal {
+    param([string]$SelfText, [hashtable]$Options)
+
+    if ($Options.InTerminal -or $Options.NoTerminal) { return $false }
+    if ($env:WT_SESSION -or $env:TERM_PROGRAM -or $env:ConEmuPID) { return $false }
+    if ($Host.Name -ne 'ConsoleHost' -or $Spa.Ui.Redirected -or $Spa.Ui.InputRedirected) { return $false }
+    if (-not (Get-Command -Name 'wt.exe' -CommandType Application -ErrorAction SilentlyContinue)) { return $false }
+
+    $extra = @()
+    if ($Options.Elevated) { $extra += '-Elevated' }
+    $parent = $null
+    try {
+        $me = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID) -ErrorAction Stop
+        $parent = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $me.ParentProcessId) -ErrorAction Stop
+    }
+    catch {}
+    if (-not (Start-SpaSelf -SelfText $SelfText -Options $Options -Extra $extra -TerminalOnly)) { return $false }
+
+    # 旧的分发链接是 cmd /c "... & pause"：结束外层的一次性 cmd，老窗口才不会停在"按任意键继续"。
+    # 用户自己开的交互式 cmd 不带 /c，不会被结束。
+    if ($parent -and $parent.Name -eq 'cmd.exe' -and [string]$parent.CommandLine -match '(?i)\s/c\s') {
+        try { Stop-Process -Id $parent.ProcessId -Force -ErrorAction Stop } catch {}
+    }
+    return $true
 }
 
 # SteamSPA · 清理目标
@@ -1501,7 +1484,6 @@ function New-SpaTarget {
         Recurse    = [bool]$Data.Recurse
         RuleIds    = New-Object System.Collections.Generic.List[string]
         Risk       = 'low'
-        Confirm    = $false
         Status     = ''          # removed / failed / skipped
         Message    = ''
     }
@@ -1667,7 +1649,9 @@ function Find-SpaActionTargets {
             $name = [string]$Action.name
             $props = Get-ItemProperty -LiteralPath $path -ErrorAction SilentlyContinue
             if (-not $props -or -not ($props.PSObject.Properties.Name -contains $name)) { return @() }
-            return (New-SpaTarget -Type 'registry-value' -Key ($path + '|' + $name) -Label ($path + ' : ' + $name) -Category (Get-SpaRegistryCategory $path) -Data @{ Path = $path; Name = $name })
+            # 规则写了 values 时，只有当前值在列表里才算残留（系统自己写的正常值不动）。
+            if ($Action.values -and @($Action.values) -notcontains [string]$props.$name) { return @() }
+            return (New-SpaTarget -Type 'registry-value' -Key ($path + '|' + $name) -Label ($path + ' : ' + $name) -Category (Get-SpaRegistryCategory ($path + '\' + $name)) -Data @{ Path = $path; Name = $name })
         }
         'defender-exclusion-path' {
             $path = Resolve-SpaTemplate -Text $Action.path -Variables $Variables
@@ -1954,7 +1938,6 @@ function Invoke-SpaScan {
                 }
                 if (-not $target.RuleIds.Contains($rule.id)) { $target.RuleIds.Add($rule.id) }
                 if ((Get-SpaRiskRank $rule.risk) -gt (Get-SpaRiskRank $target.Risk)) { $target.Risk = $rule.risk }
-                if ($rule.confirm -eq $true) { $target.Confirm = $true }
             }
         }
     }
@@ -1982,10 +1965,7 @@ function Show-SpaFindings {
         Write-UiSection '扫描结果' '未发现假入库残留' Success
     }
     else {
-        $flagged = @($Items | Where-Object { $_.Confirm }).Count
-        $hint = '发现 {0} 项残留' -f $Items.Count
-        if ($flagged -gt 0) { $hint += '（其中 {0} 项涉及系统设置，标为"需确认"）' -f $flagged }
-        Write-UiSection '扫描结果' $hint Danger
+        Write-UiSection '扫描结果' ('发现 {0} 项残留' -f $Items.Count) Danger
     }
 
     $titles = [ordered]@{ files = '文件'; config = 'STEAM 配置'; registry = '注册表'; startup = '启动项 / 计划任务'; security = '系统安全设置'; process = '后台进程' }
@@ -1999,8 +1979,7 @@ function Show-SpaFindings {
         foreach ($item in $group) {
             $n++
             Write-Ui ('    {0,4}  ' -f $n) Dim -NoNewline
-            Write-Ui (Format-SpaLabel $item.Label) Path -NoNewline
-            if ($item.Confirm) { Write-Ui '  需确认' Warning } else { Write-Host '' }
+            Write-Ui (Format-SpaLabel $item.Label) Path
         }
     }
 
@@ -2044,7 +2023,7 @@ function Request-SpaElevation {
     return $false
 }
 
-# 清理前须知 + 一次确认。返回要清理的目标；取消返回 $null。
+# 清理前须知 + 一次 Y/N（回车 = 清理）。取消返回 $null。
 function Read-SpaCleanupDecision {
     param([object[]]$Items, [bool]$SteamRunning)
 
@@ -2056,25 +2035,13 @@ function Read-SpaCleanupDecision {
     Write-UiNote '清理失败时，请暂时退出杀毒软件后重试。'
     Write-UiNote '清理后首次打开 STEAM 可能较慢，建议开启加速器，耐心等几分钟。'
 
-    $regular = @($Items | Where-Object { -not $_.Confirm })
-    $flagged = @($Items | Where-Object { $_.Confirm })
     $verb = if ($SteamRunning) { '关闭 STEAM 并清理' } else { '清理' }
 
     Write-UiSection '是否清理？'
     Write-UiOption 'Y' ('{0}全部 {1} 项' -f $verb, $Items.Count)
-    $allowed = @('Y', 'N')
-    if ($regular.Count -gt 0 -and $flagged.Count -gt 0) {
-        Write-UiOption 'S' ('{0}常规的 {1} 项，跳过 {2} 项"需确认"' -f $verb, $regular.Count, $flagged.Count)
-        $allowed = @('Y', 'S', 'N')
-    }
     Write-UiOption 'N' '取消，不做任何修改'
-    $choice = Read-UiChoice -Prompt ('请选择 [' + ($allowed -join '/') + ']，回车 = 取消:') -Allowed $allowed -Default 'N'
-
+    $choice = Read-UiChoice -Prompt '请选择 [Y/N]，回车 = 清理:' -Allowed @('Y', 'N') -Default 'Y'
     if ($choice -eq 'N') { return $null }
-    if ($choice -eq 'S') {
-        foreach ($t in $flagged) { Set-SpaResult $t 'skipped' '用户选择跳过' }
-        return $regular
-    }
     return $Items
 }
 
@@ -2146,6 +2113,11 @@ function Invoke-SpaMain {
         Write-Host ''
         Show-SpaHelp
         return 2
+    }
+
+    if (Move-SpaToTerminal -SelfText $SelfText -Options $Options) {
+        $Spa.Paused = $true
+        return 0
     }
 
     try { $Host.UI.RawUI.WindowTitle = 'STEAM SPA 清理工具' } catch {}
@@ -2229,12 +2201,13 @@ catch {
 }
 finally {
     if (-not $spaOptions.NoPause -and -not $Spa.Paused) { Wait-UiExit }
-    if ($spaOptions.Elevated -and $PSCommandPath -and $PSCommandPath -like (Join-Path $env:TEMP 'SteamSPA\SteamSPA-*.ps1')) {
+    if ($PSCommandPath -and $PSCommandPath -like (Join-Path $env:TEMP 'SteamSPA\SteamSPA-*.ps1')) {
         Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
     }
     if ($spaEncoding) { try { [Console]::OutputEncoding = $spaEncoding } catch {} }
 }
 # 只有以文件方式运行时才设置退出码；irm | iex 下 exit 会关掉用户的窗口。
-if ($PSCommandPath) { exit $spaExitCode }
+# 在 Windows Terminal 里运行时退出码记为 0：非 0 时它会留着窗口显示"进程已退出"。
+if ($PSCommandPath) { exit $(if ($spaOptions.InTerminal) { 0 } else { $spaExitCode }) }
 
 } @args

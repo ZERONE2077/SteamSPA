@@ -4,34 +4,31 @@ SteamSPA 是一个 Windows PowerShell 工具，用于识别、展示并清理 St
 
 ## 使用
 
-### jsDelivr 镜像（国内推荐）
+做法统一是“下载成文件 → 运行文件”。不用 `-EncodedCommand`，也不用 `irm | iex`，
+这两种写法和木马的常见套路一样，会被杀软报毒。
 
-jsDelivr 在国内更快，但它把 `.ps1` 当二进制返回（`Content-Type: application/octet-stream`，不带 charset），**Windows PowerShell 5.1 的 `irm` 会按 ISO-8859-1 解码，中文全部乱码**。必须按字节取回再按 UTF-8 解：
+### 快捷方式（推荐给普通用户）
 
-```powershell
-$u = 'https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1?' + [guid]::NewGuid().ToString('N')
-iex ([Text.Encoding]::UTF8.GetString((iwr $u -UseBasicParsing).RawContentStream.ToArray()).TrimStart([char]0xFEFF))
-```
+`tools/make-link.ps1` 生成 `Steam Spa 清理工具.lnk`，双击即可。命令是明文：
+依次尝试国内镜像和 GitHub，下载到 `%TEMP%\SteamSPA.ps1` 后运行。
+快捷方式不用勾"以管理员身份运行"，需要时脚本会自己申请。
 
-PowerShell 7 默认 UTF-8，用 `irm ... | iex` 也正常。
-
-浏览器直链：
-
-https://cdn.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1
-
-`@main` 会被 CDN 缓存几个小时，刚发布的新版可能要等一会儿才生效。
-
-### GitHub Raw
+### 复制到 PowerShell 运行
 
 ```powershell
-irm https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1 | iex
+$f = "$env:TEMP\SteamSPA.ps1"; iwr https://cdn.jsdmirror.com/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f
 ```
 
-本地运行（`-File` 在 5.1 下会按 ANSI 解码导致中文乱码，改用显式 UTF-8 读取）：
+能访问 GitHub 时把地址换成 `https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1`。
+jsDelivr 的 `@main` 有几个小时缓存，刚发布的新版可能要等一会儿才生效。
+
+### 本地运行
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((Get-Content .\uninstall.ps1 -Raw -Encoding UTF8)))"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 ```
+
+文件带 UTF-8 BOM，5.1 用 `-File` 运行中文正常；`-OutFile` 按原始字节保存，BOM 不会丢。
 
 ## 参数
 
@@ -48,8 +45,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create
 1. 显示本机信息；不是管理员时询问是否以管理员身份重新打开（脚本自身源码写到临时文件后提权运行，不重新下载）。
 2. 列出 PowerShell 历史里的可疑下载命令（仅显示，不作为删除依据）。
 3. 扫描所有规则（只读），同一目标在多条规则里出现只算一次。
-4. 按类别列出发现项，标出 `[需确认]` 项；Valve 签名文件和受保护目录单独列出且不删除。
-5. 确认：`Y` 全部清理，`S` 只清理常规项（跳过 `[需确认]`），`N` 或回车取消。
+4. 按类别列出发现项；Valve 签名文件和受保护目录单独列出且不删除。
+5. 确认：`Y` 或回车全部清理，`N` 取消。
 6. STEAM 正在运行时先关闭；先结束进程、删计划任务，再删文件和注册表。清理对象都是非官方残留，不做备份。
 7. 汇总结果。
 
@@ -72,7 +69,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create
 
 ## 安全设计
 
-- 扫描阶段只读，不修改系统；清理前必须明确确认，默认选项是取消。
+- 扫描阶段只读，不修改系统；清理前列出全部目标，确认一次（回车 = 清理）。
 - 路径模板里的变量缺失（例如没找到 STEAM）时直接跳过该规则，不会拼出残缺路径。
 - 硬性边界：不删磁盘根目录、系统和用户根目录、STEAM 根目录及 config/bin/steamapps/userdata 等，
   `steamapps`（游戏）和 `userdata`（存档）下的任何内容都不碰。
@@ -87,6 +84,7 @@ uninstall.ps1        整个工具（程序 + 规则），唯一对外分发的�
 tests/SmokeTests.ps1 冒烟测试
 tools/publish.ps1    发布
 tools/launch.ps1     本机试跑
+tools/make-link.ps1  生成对外分发的快捷方式
 ```
 
 Windows PowerShell 5.1+，无需第三方模块。
