@@ -16,11 +16,11 @@ SteamSPA 是一个 Windows PowerShell 工具，用于识别、展示并清理 St
 ### 复制到 PowerShell 运行
 
 ```powershell
-$f = "$env:TEMP\SteamSPA.ps1"; iwr https://cdn.jsdmirror.com/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+$f = "$env:TEMP\SteamSPA.ps1"; iwr https://fastly.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f
 ```
 
 能访问 GitHub 时把地址换成 `https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1`。
-jsDelivr 的 `@main` 有几个小时缓存，刚发布的新版可能要等一会儿才生效。
+`publish.ps1` 发布后会刷新 jsDelivr 官方节点的缓存；第三方镜像（jsdmirror 等）刷新不了，可能一天内还是旧版，只做备用。
 
 ### 本地运行
 

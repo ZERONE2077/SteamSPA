@@ -34,10 +34,14 @@ if ($LASTEXITCODE -ne 0) { throw 'git push 失败' }
 $head = (git rev-parse HEAD).Trim()
 if (-not ((git ls-remote origin refs/heads/main).Trim().StartsWith($head))) { throw "远端 main 与本地 $head 不一致" }
 
+# 刷新 jsDelivr 官方节点的 @main 缓存，快捷方式第一个用的就是它。
+try { Invoke-RestMethod -UseBasicParsing -TimeoutSec 30 'https://purge.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1' | Out-Null; Write-Host '已刷新 jsDelivr 缓存' -ForegroundColor DarkGray }
+catch { Write-Host ('jsDelivr 缓存刷新失败：' + $_.Exception.Message) -ForegroundColor Yellow }
+
 $raw = Invoke-WebRequest -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } `
     -Uri ('https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1?' + [guid]::NewGuid().ToString('N'))
 $online = [Text.Encoding]::UTF8.GetString($raw.RawContentStream.ToArray())
 if ($online -notmatch "SteamSPAUpdatedAt = '$today'") { throw '线上 uninstall.ps1 还不是这次的版本' }
 
 Write-Host ("已发布 v{0} · {1} ({2})" -f $version, $today, $head.Substring(0, 7)) -ForegroundColor Green
-Write-Host 'jsDelivr 的 @main 有几小时缓存，可用 SteamSPA-镜像jsDelivr.lnk 验证最新提交。' -ForegroundColor DarkGray
+Write-Host '第三方镜像（jsdmirror 等）刷新不了，可能一天内还是旧版；快捷方式优先用 jsDelivr 官方节点。' -ForegroundColor DarkGray

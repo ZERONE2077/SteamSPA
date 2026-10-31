@@ -8,17 +8,19 @@ param([switch]$Test)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 
+# jsDelivr 官方节点放第一位：发布后刷新缓存（purge）就立即是新版。
+# 第三方镜像（jsdmirror 等）刷新不了，可能返回长达一天的旧副本，只做备用。
 $mirrors = @(
-    'https://jsd.onmicrosoft.cn/gh/ZERONE2077/SteamSPA@main/uninstall.ps1'
-    'https://cdn.jsdmirror.com/gh/ZERONE2077/SteamSPA@main/uninstall.ps1'
     'https://fastly.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1'
+    'https://cdn.jsdmirror.com/gh/ZERONE2077/SteamSPA@main/uninstall.ps1'
+    'https://jsd.onmicrosoft.cn/gh/ZERONE2077/SteamSPA@main/uninstall.ps1'
     'https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1'
 )
 $run = if ($Test) { '& $f -ScanOnly' } else { '& $f' }
 $command = @(
     "`$f = Join-Path `$env:TEMP 'SteamSPA.ps1'; `$ok = `$false; "
     "foreach (`$u in '" + ($mirrors -join "','") + "') {"
-    " try { Invoke-WebRequest `$u -OutFile `$f -UseBasicParsing -TimeoutSec 20;"
+    " try { Invoke-WebRequest (`$u + '?' + [guid]::NewGuid().ToString('N')) -OutFile `$f -UseBasicParsing -TimeoutSec 20;"
     " if ((Get-Content `$f -Raw -Encoding UTF8) -match 'SteamSPA') { `$ok = `$true; break } } catch {} };"
     " if (`$ok) { $run } else { Write-Host '下载失败，请检查网络后重试。' -ForegroundColor Red; Read-Host '按回车退出' }"
 ) -join ''
