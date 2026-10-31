@@ -33,7 +33,8 @@ $lnk.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\pow
 $lnk.Arguments = '-NoProfile -ExecutionPolicy Bypass -Command "' + $command + '"'
 $lnk.WorkingDirectory = '%TEMP%'
 $lnk.Description = 'STEAM SPA 假入库清理工具（开源：github.com/ZERONE2077/SteamSPA）'
-$lnk.IconLocation = (Join-Path $env:SystemRoot 'System32\shell32.dll') + ',47'
+# 系统自带的"磁盘清理"扫帚图标，每台 Windows 都有。
+$lnk.IconLocation = '%SystemRoot%\System32\cleanmgr.exe,0'
 $lnk.Save()
 
 Write-Host "已生成 $path" -ForegroundColor Green
