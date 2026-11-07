@@ -114,6 +114,17 @@ try {
     Assert (-not (Test-Path (Join-Path $fakeSteam 'hid.dll')) -and -not (Test-Path (Join-Path $fakeSteam 'Core'))) '文件和目录已删除'
     Assert ($null -eq (Get-ItemProperty -LiteralPath $regKey -Name 'iscdkey' -ErrorAction SilentlyContinue)) '注册表值已删除'
 
+    # registry-tree：多个键合并成一条结果，删除时全部清掉。
+    $treeA = $regKey + '\TreeA'
+    $treeB = $regKey + '\TreeB'
+    New-Item -Path ($treeA + '\child') -Force | Out-Null
+    New-Item -Path $treeB -Force | Out-Null
+    $treeTargets = @(Find-SpaActionTargets ([pscustomobject]@{ type = 'registry-tree'; paths = @($treeA, $treeB, ($regKey + '\Missing')) }) $sv)
+    Assert ($treeTargets.Count -eq 1) ('registry-tree 合并为一条（实际 ' + $treeTargets.Count + '）')
+    Remove-SpaTarget -Target $treeTargets[0] -Variables $sv
+    $treeGone = ($treeTargets[0].Status -eq 'removed') -and (-not (Test-Path $treeA)) -and (-not (Test-Path $treeB))
+    Assert $treeGone 'registry-tree 删除全部子键'
+
 }
 finally {
     Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue

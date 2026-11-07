@@ -335,64 +335,13 @@ $EmbeddedTargetsJson = @'
             "risk": "low",
             "actions": [
                 {
-                    "type": "registry-value",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "name": "packageinfo"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "name": "steamclient"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "name": "s"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "name": "c"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "name": "iscdkey"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "name": "ActivateUnlockMode"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "name": "AlwaysStayUnlocked"
-                },
-                {
-                    "type": "registry-value",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "name": "notUnlockDepot"
-                },
-                {
-                    "type": "registry-key",
-                    "path": "HKCU:\\Software\\Valve\\Steamtools",
-                    "recurse": true
-                },
-                {
-                    "type": "registry-key",
-                    "path": "HKCU:\\Software\\SteamTools",
-                    "recurse": true
-                },
-                {
-                    "type": "registry-key",
-                    "path": "HKLM:\\Software\\SteamTools",
-                    "recurse": true
-                },
-                {
-                    "type": "registry-key",
-                    "path": "HKLM:\\Software\\Valve\\Steamtools",
-                    "recurse": true
+                    "type": "registry-tree",
+                    "paths": [
+                        "HKCU:\\Software\\Valve\\Steamtools",
+                        "HKCU:\\Software\\SteamTools",
+                        "HKLM:\\Software\\SteamTools",
+                        "HKLM:\\Software\\Valve\\Steamtools"
+                    ]
                 }
             ]
         },
@@ -1466,7 +1415,7 @@ function Move-SpaToTerminal {
 # 同一个物理目标在多条规则里出现时，用 Key 去重，只显示和删除一次。
 
 function Get-SpaSupportedTypes {
-    return @('file', 'registry-key', 'registry-value', 'defender-exclusion-path',
+    return @('file', 'registry-key', 'registry-value', 'registry-tree', 'defender-exclusion-path',
         'defender-exclusion-extension', 'defender-exclusion-process', 'process', 'task', 'task-contains')
 }
 
@@ -1619,6 +1568,13 @@ function Get-SpaRegistryCategory {
     return 'registry'
 }
 
+# 一组键合并成一条标签：显示第一个键，多个时注明总数。
+function Format-SpaRegistryTreeLabel {
+    param([string[]]$Paths)
+    if ($Paths.Count -le 1) { return $Paths[0] }
+    return ($Paths[0] + ' 等 ' + $Paths.Count + ' 项')
+}
+
 # ---------- 解析：规则动作 -> 本机目标 ----------
 
 function Find-SpaActionTargets {
@@ -1643,6 +1599,12 @@ function Find-SpaActionTargets {
             $path = [string]$Action.path
             if (-not (Test-Path -LiteralPath $path)) { return @() }
             return (New-SpaTarget -Type 'registry-key' -Key $path -Label $path -Category (Get-SpaRegistryCategory $path) -Data @{ Path = $path; Recurse = [bool]$Action.recurse })
+        }
+        'registry-tree' {
+            # 同一规则下的一组键合并成一条结果，避免同一处残留被拆成多行显示。
+            $paths = @(@($Action.paths) | Where-Object { $_ -and (Test-Path -LiteralPath $_) })
+            if ($paths.Count -eq 0) { return @() }
+            return (New-SpaTarget -Type 'registry-tree' -Key ($paths -join ';') -Label (Format-SpaRegistryTreeLabel $paths) -Category 'registry' -Data @{ Paths = $paths })
         }
         'registry-value' {
             $path = [string]$Action.path
@@ -1725,7 +1687,21 @@ function Remove-SpaTarget {
             'registry-key' {
                 Remove-Item -LiteralPath $d.Path -Force -Recurse -ErrorAction Stop
             }
+            'registry-tree' {
+                $failed = @()
+                foreach ($p in @($d.Paths)) {
+                    if (-not (Test-Path -LiteralPath $p)) { continue }
+                    try { Remove-Item -LiteralPath $p -Force -Recurse -ErrorAction Stop }
+                    catch { $failed += ($p + ': ' + (Get-SpaErrorText $_)) }
+                    if (Test-Path -LiteralPath $p) { $failed += ($p + ': 仍存在') }
+                }
+                if ($failed.Count -gt 0) { return Set-SpaResult $Target 'failed' ($failed -join '; ') }
+            }
             'registry-value' {
+                # 父键可能已被同批的 registry-key 递归删除，此时值自然也不存在，视为已清理。
+                if (-not (Test-Path -LiteralPath $d.Path)) { return Set-SpaResult $Target 'removed' '随父键一并删除' }
+                $props = Get-ItemProperty -LiteralPath $d.Path -ErrorAction SilentlyContinue
+                if (-not $props -or -not ($props.PSObject.Properties.Name -contains $d.Name)) { return Set-SpaResult $Target 'removed' '已不存在' }
                 Remove-ItemProperty -LiteralPath $d.Path -Name $d.Name -Force -ErrorAction Stop
             }
             { $_ -like 'defender-*' } {
