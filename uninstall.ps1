@@ -305,6 +305,20 @@ $EmbeddedTargetsJson = @'
                 { "type": "file", "path": "C:\\Windows\\Temp\\Windoe\\Syste6\\encapi", "recurse": true },
                 { "type": "file", "path": "C:\\Windows\\Temp\\Windoe", "recurse": true }
             ]
+        },
+        {
+            "id": "rival-loader-scdkey", "title": "同行注入器 scdkey.exe 及 HKCU\\Software\\Valve\\tools 配置", "risk": "medium",
+            "actions": [
+                { "type": "process", "name": "scdkey" },
+                { "type": "file", "path": "${SteamPath}\\bin\\scdkey.exe" },
+                { "type": "registry-key", "path": "HKCU:\\Software\\Valve\\tools", "recurse": true }
+            ]
+        },
+        {
+            "id": "steam-mitigation-prefersystem32", "title": "steam.exe 被关闭 PreferSystem32 防护（方便 xinput1_4.dll 等劫持）", "risk": "medium",
+            "actions": [
+                { "type": "registry-value", "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\steam.exe", "name": "MitigationOptions" }
+            ]
         }
     ]
 }
@@ -1075,7 +1089,7 @@ function Find-SpaHistoryClues {
     $indicators = @(
         'steam.run', 'steam.work', 'steam.icu', 'steam-run.com', 'cdks.run', 'ruku.run', 'steamcdkey.cn',
         'steamcn.cc', 'steamcc.cn', 'vfc88.cn', 'vfc77.cn', 'tfdl.net', 'siyecao', 'wanzi666', 'kyeamu',
-        '121.41.99.14', '139.196.146.200', '120.55.165.49', 'storegames.top', '47.100.121.251', '47.98.148.132', 'opensteamtool',
+        '121.41.99.14', '139.196.146.200', '120.55.165.49', 'storegames.top', 'clkml.cn', '47.100.121.251', '47.98.148.132', 'opensteamtool',
         'keymanifest', 'SdkoInjector', 'sdko.dll', 'SDL3_voder', 'sdl3_setup', 'csu_install', 'CSU_DIVA_HOST',
         'steamcdk', 'Steamtools', 'lanzou'
     )
