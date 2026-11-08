@@ -21,6 +21,14 @@ Assert ($errors.Count -eq 0) ('语法' + $(if ($errors.Count) { ': ' + $errors[0
 $bytes = [IO.File]::ReadAllBytes($script)
 # 5.1 读无 BOM 脚本会按 ANSI 解码，中文乱码。
 Assert ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) '带 UTF-8 BOM'
+# 仓库里其他含中文的 .ps1 也一样要带 BOM。
+foreach ($ps1 in Get-ChildItem -LiteralPath (Join-Path $root 'tools'), (Join-Path $root 'tests') -Filter '*.ps1') {
+    $b = [IO.File]::ReadAllBytes($ps1.FullName)
+    $hasBom = $b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF
+    $nonAscii = $false
+    foreach ($x in $b) { if ($x -ge 0x80) { $nonAscii = $true; break } }
+    Assert ($hasBom -or -not $nonAscii) ($ps1.Directory.Name + '/' + $ps1.Name + ' 带 UTF-8 BOM')
+}
 
 # 只加载函数定义，不运行主流程。
 $Spa = @{ Ui = $null; Defender = $null; Tasks = $null; Warnings = New-Object System.Collections.Generic.List[string] }

@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 # 在仓库根目录生成三个快捷方式（*.lnk 不进仓库）：
 #   Steam Spa 清理工具.lnk          对外分发：jsDelivr 官方节点优先，其次国内镜像，最后 GitHub
 #   Steam Spa 清理工具（GitHub）.lnk  只从 GitHub 取 main 最新版，用来验证刚推送的内容
