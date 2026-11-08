@@ -48,7 +48,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 2. 列出 PowerShell 历史里的可疑下载命令（仅显示，不作为删除依据）。
 3. 扫描所有规则（只读），同一目标在多条规则里出现只算一次。
 4. 按类别列出发现项；Valve 签名文件和受保护目录单独列出且不删除。
-5. 确认：`Y` 或回车全部清理，`N` 取消。
+5. 确认：按 `1` 全部清理，按 `Esc` 取消（单键，不用回车）。
 6. STEAM 正在运行时先关闭；先结束进程、删计划任务，再删文件和注册表。清理对象都是非官方残留，不做备份。
 7. 汇总结果，并写到 `%TEMP%\SteamSPA-result.txt`（每次覆盖）；有失败项时提示路径，用户反馈问题时发这个文件即可。
 
@@ -71,7 +71,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 ## 安全设计
 
-- 扫描阶段只读，不修改系统；清理前列出全部目标，确认一次（回车 = 清理）。
+- 扫描阶段只读，不修改系统；清理前列出全部目标，确认一次（按 1 清理，Esc 取消）。
 - 路径模板里的变量缺失（例如没找到 STEAM）时直接跳过该规则，不会拼出残缺路径。
 - 硬性边界：不删磁盘根目录、系统和用户根目录、STEAM 根目录及 config/bin/steamapps/userdata 等，
   `steamapps`（游戏）和 `userdata`（存档）下的任何内容都不碰。

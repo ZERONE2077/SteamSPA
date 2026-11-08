@@ -57,13 +57,6 @@ foreach ($rule in $db.rules) {
     $badTypes = @($rule.actions | Where-Object { $supported -notcontains $_.type } | ForEach-Object { $_.type })
     Assert ($ok -and $badTypes.Count -eq 0) ('规则 ' + $rule.id + $(if ($badTypes) { ' 不支持的类型: ' + ($badTypes -join ',') }))
 }
-# 样本归档不进仓库（CI 上没有），本机有时才检查 sources 引用。
-if (Test-Path -LiteralPath (Join-Path $root 'research\samples')) {
-    $refs = @($db.rules | ForEach-Object { @($_.sources) } | Where-Object { $_ -like 'research/samples/*' } | Select-Object -Unique)
-    $missing = @($refs | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_)) })
-    Assert ($missing.Count -eq 0) ('样本引用 ' + $refs.Count + ' 条' + $(if ($missing) { '，缺失: ' + ($missing -join ', ') }))
-}
-else { Write-Host '  skip  本机没有 research/samples，跳过样本引用检查' }
 
 Write-Host '== 单元'
 $vars = @{ SteamPath = 'C:\Steam'; APPDATA = 'C:\Users\u\AppData\Roaming'; TEMP = 'C:\T' }
@@ -145,6 +138,19 @@ finally {
     Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $regKey -Recurse -Force -ErrorAction SilentlyContinue
 }
+
+Write-Host '== 确认提示'
+# 输入被重定向时读不了单键，退回整行输入：只有 1 算确认，其余（含空行）都算取消。
+$confirmFn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Read-UiConfirm' }, $true).Extent.Text
+$confirmFile = Join-Path ([IO.Path]::GetTempPath()) ('SteamSPA-confirm-' + [guid]::NewGuid().ToString('N') + '.ps1')
+[IO.File]::WriteAllText($confirmFile, "function Write-Ui { }`r`n$confirmFn`r`nRead-UiConfirm", (New-Object System.Text.UTF8Encoding($true)))
+try {
+    foreach ($case in @(@('1', 'True'), @('', 'False'), @('y', 'False'))) {
+        $got = ($case[0] | & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $confirmFile 2>&1 | Out-String).Trim()
+        Assert ($got -match ($case[1] + '$')) ('输入 "' + $case[0] + '" -> ' + $case[1] + '（实际 ' + $got + '）')
+    }
+}
+finally { Remove-Item -LiteralPath $confirmFile -Force -ErrorAction SilentlyContinue }
 
 Write-Host '== 生成物只扫描运行'
 # uninstall.ps1 输出 UTF-8；按控制台默认编码（中文系统是 GBK）读会乱码，所以读之前切到 UTF-8。

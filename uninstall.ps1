@@ -16,7 +16,7 @@ if ('中' -ne [string][char]0x4E2D) {
     Write-Warning 'SteamSPA: Chinese text was decoded with the wrong encoding. Download uninstall.ps1 as a file and run it with powershell -File (see README).'
 }
 $SteamSPAReleaseVersion = '4.0'
-$SteamSPAUpdatedAt = '2026-11-08'
+$SteamSPAUpdatedAt = '2026-11-09'
 
 # 规则库：路径只写样本实际写入的精确位置。每条规则来自哪些样本记在本地 research/rule-sources.json。
 $EmbeddedTargetsJson = @'
@@ -468,19 +468,24 @@ function Clear-UiProgress {
     Write-Host ("`r" + (' ' * 60) + "`r") -NoNewline
 }
 
-# 读取一个选项。空输入或输入流结束时返回默认值（默认值应当是安全选项）。
-function Read-UiChoice {
-    param([string]$Prompt, [string[]]$Allowed, [string]$Default)
-    while ($true) {
-        Write-Host ''
-        Write-Ui ('    ' + $Prompt + ' ') Accent -NoNewline
+# 单键确认：按 1 返回 $true，按 Esc 返回 $false，其他键忽略，不用按回车。
+# 先清空之前误按的键（比如扫描时按的回车），免得一出现提示就被触发。
+function Read-UiConfirm {
+    param([string]$Prompt = '按 1 确认，Esc 取消')
+    Write-Host ''
+    Write-Ui ('    ' + $Prompt + ' ') Accent -NoNewline
+    try {
+        while ([Console]::KeyAvailable) { [void][Console]::ReadKey($true) }
+        while ($true) {
+            $key = [Console]::ReadKey($true)
+            if ($key.KeyChar -eq '1') { Write-Host '1'; return $true }
+            if ($key.Key -eq [ConsoleKey]::Escape) { Write-Host 'Esc'; return $false }
+        }
+    }
+    catch {
+        # 没有真正的控制台（输入被重定向等）读不了单键：退回整行输入，只有 1 算确认。
         $raw = Read-Host
-        if ($null -eq $raw) { return $Default }
-        $value = $raw.Trim().ToUpperInvariant()
-        if ($value -eq '') { return $Default }
-        if ($Allowed -contains $value) { return $value }
-        if ($Spa.Ui -and $Spa.Ui.InputRedirected) { return $Default }
-        Write-Ui ('    请输入 ' + ($Allowed -join ' / ') + '，或直接回车') Warning
+        return ($null -ne $raw -and $raw.Trim() -eq '1')
     }
 }
 
@@ -1266,9 +1271,9 @@ function Show-SpaClues {
 function Request-SpaElevation {
     param([string]$Reason, [string]$Action, [string]$SelfText)
     Write-UiSection '需要管理员权限' $Reason Warning
-    Write-UiOption 'Y' $Action
-    Write-UiOption 'N' '退出'
-    if ((Read-UiChoice -Prompt '请选择 [Y/N]，回车 = Y:' -Allowed @('Y', 'N') -Default 'Y') -ne 'Y') { return $false }
+    Write-UiOption '1' $Action
+    Write-UiOption 'Esc' '退出'
+    if (-not (Read-UiConfirm)) { return $false }
     if (Start-SpaElevated -SelfText $SelfText -Options $Spa.Options) {
         Write-UiResult '已打开' '已在新的管理员窗口中继续，本窗口可以关闭。' Success
         $Spa.Paused = $true
@@ -1279,7 +1284,7 @@ function Request-SpaElevation {
     return $false
 }
 
-# 清理前须知 + 一次 Y/N（回车 = 清理）。取消返回 $null。
+# 清理前须知 + 一次确认（1 = 清理，Esc = 取消）。取消返回 $null。
 function Read-SpaCleanupDecision {
     param([object[]]$Items, [bool]$SteamRunning)
 
@@ -1294,10 +1299,9 @@ function Read-SpaCleanupDecision {
     $verb = if ($SteamRunning) { '关闭 STEAM 并清理' } else { '清理' }
 
     Write-UiSection '是否清理？'
-    Write-UiOption 'Y' ('{0}全部 {1} 项' -f $verb, $Items.Count)
-    Write-UiOption 'N' '取消，不做任何修改'
-    $choice = Read-UiChoice -Prompt '请选择 [Y/N]，回车 = 清理:' -Allowed @('Y', 'N') -Default 'Y'
-    if ($choice -eq 'N') { return $null }
+    Write-UiOption '1' ('{0}全部 {1} 项' -f $verb, $Items.Count)
+    Write-UiOption 'Esc' '取消，不做任何修改'
+    if (-not (Read-UiConfirm '按 1 清理，Esc 取消')) { return $null }
     return $Items
 }
 
@@ -1362,9 +1366,9 @@ function Read-SpaExit {
     $exe = if ($SteamPath) { Join-Path $SteamPath 'steam.exe' } else { $null }
     if ($OfferSteam -and $exe -and (Test-Path -LiteralPath $exe -PathType Leaf)) {
         Write-Host ''
-        Write-UiOption 'R' '重新打开 STEAM'
-        Write-UiOption '回车' '退出'
-        if ((Read-UiChoice -Prompt '请选择:' -Allowed @('R') -Default '') -eq 'R') {
+        Write-UiOption '1' '重新打开 STEAM'
+        Write-UiOption 'Esc' '退出'
+        if (Read-UiConfirm '按 1 重新打开 STEAM，Esc 退出') {
             try { Start-Process -FilePath $exe -ErrorAction Stop } catch { Write-UiResult '失败' '无法启动 STEAM，请手动打开' Danger }
         }
         return
