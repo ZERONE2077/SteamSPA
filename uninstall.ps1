@@ -290,6 +290,21 @@ $EmbeddedTargetsJson = @'
                 { "type": "task-contains", "contains": "${APPDATA}\\Stool" },
                 { "type": "task-contains", "contains": "%APPDATA%\\Stool" }
             ]
+        },
+        {
+            "id": "rival-trojan-encapi", "title": "同行木马：Windows\\Temp 下 encapi / Media Renderer 肉鸡程序", "risk": "high",
+            "actions": [
+                { "type": "file", "path": "C:\\Windows\\Temp\\Windows\\System64\\encapi", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Windows\\System64", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Microsoft.Windows.CapturePick\\Visualizations\\Media Rendereri", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Microsoft.Windows.CapturePick\\Visualizations\\Media Renderer", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Microsoft.Windows.CapturePick", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Windowi\\Syste64\\encapi", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Windowi\\Syste64", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Windowi", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Windoe\\Syste6\\encapi", "recurse": true },
+                { "type": "file", "path": "C:\\Windows\\Temp\\Windoe", "recurse": true }
+            ]
         }
     ]
 }
@@ -1060,7 +1075,7 @@ function Find-SpaHistoryClues {
     $indicators = @(
         'steam.run', 'steam.work', 'steam.icu', 'steam-run.com', 'cdks.run', 'ruku.run', 'steamcdkey.cn',
         'steamcn.cc', 'steamcc.cn', 'vfc88.cn', 'vfc77.cn', 'tfdl.net', 'siyecao', 'wanzi666', 'kyeamu',
-        '121.41.99.14', '139.196.146.200', '47.100.121.251', '47.98.148.132', 'opensteamtool',
+        '121.41.99.14', '139.196.146.200', '120.55.165.49', 'storegames.top', '47.100.121.251', '47.98.148.132', 'opensteamtool',
         'keymanifest', 'SdkoInjector', 'sdko.dll', 'SDL3_voder', 'sdl3_setup', 'csu_install', 'CSU_DIVA_HOST',
         'steamcdk', 'Steamtools', 'lanzou'
     )
