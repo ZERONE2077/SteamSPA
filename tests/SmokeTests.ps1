@@ -78,11 +78,9 @@ Assert ($null -ne (Get-SpaUnsafePathReason '\hid.dll' $vars)) '拒绝相对路�
 Assert ($null -ne (Get-SpaUnsafePathReason 'D:\' $vars)) '拒绝磁盘根目录'
 Assert ($null -ne (Get-SpaUnsafePathReason $env:APPDATA $vars)) '拒绝 APPDATA 根目录'
 
-$o = ConvertFrom-SpaArguments @('-Risk', 'low,high', '-Only', 'a,b', '-NoPause')
-Assert ((($o.Risk -join ',') -eq 'low,high') -and (($o.Only -join ',') -eq 'a,b') -and $o.NoPause -and $o.Errors.Count -eq 0) '参数解析'
-Assert ((ConvertFrom-SpaArguments @('-Risk', 'extreme')).Errors.Count -eq 1) '非法风险级别报错'
+$o = ConvertFrom-SpaArguments @('-ScanOnly', '-NoPause')
+Assert ($o.ScanOnly -and $o.NoPause -and $o.Errors.Count -eq 0) '参数解析'
 Assert ((ConvertFrom-SpaArguments @('-Bogus')).Errors.Count -eq 1) '未知参数报错'
-Assert (((ConvertTo-SpaArgumentList $o) -join ' ') -eq '-Risk low,high -Only a,b -NoPause') '参数还原（提权重启用）'
 
 $clues = @(Find-SpaHistoryClues @(
         'git commit -m "confirm fix"',

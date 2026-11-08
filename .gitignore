@@ -12,7 +12,6 @@ desktop.ini
 # Editor / local files
 .vscode/
 .idea/
-/.workbuddy/
 
 # Local research: malware samples, notes, analysis helpers. Never publish.
 /research/

@@ -37,8 +37,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 ## 参数
 
 - `-ScanOnly`：只扫描并列出，不询问、不删除
-- `-Risk low,medium,high`：只处理指定风险级别的规则
-- `-Only rule-id,...`：只处理指定规则
 - `-NoPause`：结束时不等待按键
 - `-Help`：显示帮助
 
@@ -88,7 +86,6 @@ uninstall.ps1        整个工具（程序 + 规则），唯一对外分发的�
 tests/SmokeTests.ps1 冒烟测试
 tools/publish.ps1    发布
 tools/make-link.ps1  生成快捷方式（分发 / GitHub / 本地）
-tools/fetch-sample.ps1  抓样本原始字节到 research/samples（只下载不运行）
 ```
 
 Windows PowerShell 5.1+，无需第三方模块。

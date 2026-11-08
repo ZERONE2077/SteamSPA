@@ -18,7 +18,7 @@ if ('中' -ne [string][char]0x4E2D) {
 $SteamSPAReleaseVersion = '4.0'
 $SteamSPAUpdatedAt = '2026-11-08'
 
-# 规则库：id 不要改（-Only 参数用它）；路径只写样本实际写入的精确位置。
+# 规则库：路径只写样本实际写入的精确位置。每条规则来自哪些样本记在本地 research/rule-sources.json。
 $EmbeddedTargetsJson = @'
 {
     "version": 1,
@@ -26,20 +26,6 @@ $EmbeddedTargetsJson = @'
     "rules": [
         {
             "id": "steam-inject-dlls", "title": "STEAM 目录注入 DLL", "risk": "low",
-            "sources": [
-                "research/samples/steam-run.com/142785900.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.002.ps1",
-                "research/samples/steam-run.com/steam-run.com.003.ps1",
-                "research/samples/steam-run.com/steam-run.com.004.ps1",
-                "research/samples/steam.run/cdks.run.001.ps1",
-                "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1",
-                "research/samples/steam.work/steam.icu.001.ps1",
-                "research/samples/steam-run.com/steamcdkey.cn.001.ps1",
-                "research/samples/139.196.146.200/139.196.146.200.ps1",
-                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\dwmapi.dll" },
                 { "type": "file", "path": "${SteamPath}\\xinput1_4.dll" },
@@ -75,14 +61,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "sample-47-100-121-251", "title": "Unialls 假入库家族残留", "risk": "high",
-            "sources": [
-                "research/samples/47.100.121.251/47.100.121.251.ps1",
-                "research/samples/47.98.148.132/47.98.148.132.ps1",
-                "research/samples/vfc88.cn/vfc88.cn.001.ps1",
-                "research/samples/vfc88.cn/ss.vfc77.cn.001.ps1",
-                "research/samples/139.196.146.200/139.196.146.200.ps1",
-                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\core.dll" },
                 { "type": "file", "path": "${SteamPath}\\7z.dll" },
@@ -100,10 +78,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "unialls-sdko-loader", "title": "Unialls sdko 假入库加载器", "risk": "high",
-            "sources": [
-                "research/samples/139.196.146.200/139.196.146.200.ps1",
-                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\sdko.dll" },
                 { "type": "file", "path": "${SteamPath}\\core.exe" },
@@ -116,16 +90,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "steam-config-files", "title": "STEAM 配置文件 / Beta 标志 / appdata 缓存", "risk": "low",
-            "sources": [
-                "research/samples/steam-run.com/142785900.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.002.ps1",
-                "research/samples/steam-run.com/steam-run.com.003.ps1",
-                "research/samples/steam-run.com/steam-run.com.004.ps1",
-                "research/samples/steam.work/steam.icu.001.ps1",
-                "research/samples/139.196.146.200/139.196.146.200.ps1",
-                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\steam.cfg" },
                 { "type": "file", "path": "${SteamPath}\\package\\beta" },
@@ -140,31 +104,12 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "registry-steamtools", "title": "注册表 Steamtools / SteamTools 键 (HKCU + HKLM)", "risk": "low",
-            "sources": [
-                "research/samples/steam-run.com/142785900.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.002.ps1",
-                "research/samples/steam-run.com/steam-run.com.003.ps1",
-                "research/samples/steam-run.com/steam-run.com.004.ps1",
-                "research/samples/steam.run/cdks.run.001.ps1",
-                "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1",
-                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
-            ],
             "actions": [
                 { "type": "registry-tree", "paths": ["HKCU:\\Software\\Valve\\Steamtools", "HKCU:\\Software\\SteamTools", "HKLM:\\Software\\SteamTools", "HKLM:\\Software\\Valve\\Steamtools"] }
             ]
         },
         {
             "id": "appdata-stool", "title": "%APPDATA%\\Stool 工具目录", "risk": "low",
-            "sources": [
-                "research/samples/steam-run.com/142785900.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.002.ps1",
-                "research/samples/steam-run.com/steam-run.com.003.ps1",
-                "research/samples/steam-run.com/steam-run.com.004.ps1",
-                "https://gitee.com/mrsiyecao/powershell2"
-            ],
             "actions": [
                 { "type": "file", "path": "${APPDATA}\\Stool", "recurse": true }
             ]
@@ -172,50 +117,24 @@ $EmbeddedTargetsJson = @'
         {
             "id": "localappdata-steam", "title": "%LOCALAPPDATA%\\Steam 客户端缓存目录 (默认禁用，避免登录/启动异常)", "risk": "medium",
             "enabled": false,
-            "sources": [
-                "research/samples/steam.run/cdks.run.001.ps1",
-                "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${LOCALAPPDATA}\\steam", "recurse": true }
             ]
         },
         {
             "id": "localdata-vdf", "title": "%LOCALAPPDATA%\\Steam\\localData.vdf", "risk": "low",
-            "sources": [
-                "research/samples/steam.work/steam.icu.001.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${LOCALAPPDATA}\\Steam\\localData.vdf" }
             ]
         },
         {
             "id": "tencent-cache", "title": "%LOCALAPPDATA%\\Microsoft\\Tencent 缓存", "risk": "medium",
-            "sources": [
-                "research/samples/steam.run/cdks.run.001.ps1",
-                "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1",
-                "research/samples/139.196.146.200/139.196.146.200.ps1",
-                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${LOCALAPPDATA}\\Microsoft\\Tencent", "recurse": true }
             ]
         },
         {
             "id": "temp-scripts", "title": "下载用的临时脚本", "risk": "low",
-            "sources": [
-                "research/samples/steam-run.com/142785900.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.002.ps1",
-                "research/samples/steam-run.com/steam-run.com.003.ps1",
-                "research/samples/steam-run.com/steam-run.com.004.ps1",
-                "research/samples/steam.run/cdks.run.001.ps1",
-                "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1",
-                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${USERPROFILE}\\get.ps1" },
                 { "type": "file", "path": "${ScriptRoot}\\a.ps1" },
@@ -224,24 +143,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "defender-exclusions", "title": "Windows Defender 排除项", "risk": "high",
-            "sources": [
-                "research/samples/steam-run.com/142785900.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.001.ps1",
-                "research/samples/steam-run.com/steam-run.com.002.ps1",
-                "research/samples/steam-run.com/steam-run.com.003.ps1",
-                "research/samples/steam-run.com/steam-run.com.004.ps1",
-                "research/samples/steam.work/steam.icu.001.ps1",
-                "research/samples/cdk.ruku.run/a.ps1",
-                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1",
-                "research/samples/steam.run/cdks.run.001.ps1",
-                "research/samples/steam.run/steam.run.001.ps1",
-                "research/samples/steam.run/steam.run.002.ps1",
-                "research/samples/steam-run.com/steamcdkey.cn.001.ps1",
-                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
-                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1",
-                "research/samples/139.196.146.200/139.196.146.200.ps1",
-                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
-            ],
             "actions": [
                 { "type": "defender-exclusion-path", "path": "${SteamPath}" },
                 { "type": "defender-exclusion-path", "path": "${SteamPath}\\dwmapi.dll" },
@@ -266,10 +167,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "smartscreen-ci-policy-registry", "title": "SmartScreen 被关闭", "risk": "high",
-            "sources": [
-                "research/samples/cdk.ruku.run/a.ps1",
-                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
-            ],
             "actions": [
                 { "type": "registry-value", "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer", "name": "SmartScreenEnabled", "values": ["Off"] },
                 { "type": "registry-value", "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System", "name": "EnableSmartScreen" },
@@ -280,41 +177,24 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "startup-steamauthdaemon", "title": "启动项 SteamAuthDaemon", "risk": "medium",
-            "sources": [
-                "research/samples/cdk.ruku.run/a.ps1",
-                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
-            ],
             "actions": [
                 { "type": "registry-value", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", "name": "SteamAuthDaemon" }
             ]
         },
         {
             "id": "process-steam-auth", "title": "steam_auth 进程", "risk": "medium",
-            "sources": [
-                "research/samples/cdk.ruku.run/a.ps1",
-                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
-            ],
             "actions": [
                 { "type": "process", "name": "steam_auth" }
             ]
         },
         {
             "id": "downloaded-steamcdk-exe", "title": "STEAM 目录下载的 steamcdk.exe", "risk": "high",
-            "sources": [
-                "research/samples/cdk.ruku.run/a.ps1",
-                "research/samples/cdk.ruku.run/cdk.ruku.run.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\steamcdk.exe" }
             ]
         },
         {
             "id": "opensteamtool-root-files", "title": "OpenSteamTool 根目录文件", "risk": "low",
-            "sources": [
-                "https://github.com/OpenSteam001/OpenSteamTool",
-                "research/samples/139.196.146.200/139.196.146.200.ps1",
-                "research/samples/139.196.146.200/2026-10-18/139.196.146.200.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\OpenSteamTool.dll" },
                 { "type": "file", "path": "${SteamPath}\\dwmapi.dll" },
@@ -325,19 +205,12 @@ $EmbeddedTargetsJson = @'
         {
             "id": "opensteamtool-lua-config", "title": "OpenSteamTool Lua 配置目录 (默认禁用)", "risk": "medium",
             "enabled": false,
-            "sources": [
-                "https://github.com/OpenSteam001/OpenSteamTool",
-                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\config\\lua", "recurse": true }
             ]
         },
         {
             "id": "steamking-installed-app", "title": "SteamKing 安装本体残留", "risk": "medium",
-            "sources": [
-                "SteamKing-Setup-1.5.3.exe (local sample, not archived)"
-            ],
             "actions": [
                 { "type": "process", "name": "SteamKing" },
                 { "type": "file", "path": "%ProgramFiles%\\SteamKing", "recurse": true },
@@ -347,19 +220,12 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "steam-extra-exes", "title": "STEAM 目录新增可执行文件", "risk": "high",
-            "sources": [
-                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\steam-lucky.exe" }
             ]
         },
         {
             "id": "rival-residue-steam-root", "title": "竞品残留：假入库竞品 DLL / 目录", "risk": "high",
-            "sources": [
-                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
-                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\diversion.dll" },
                 { "type": "file", "path": "${SteamPath}\\winmm.dll" },
@@ -386,12 +252,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "fake-library-team-steam-root-artifacts", "title": "假入库团队 powershell2 根目录残留 (游戏素材包已排除)", "risk": "high",
-            "sources": [
-                "https://gitee.com/mrsiyecao/powershell2",
-                "research/samples/mrsiyecao-powershell2/2.ps1",
-                "research/samples/mrsiyecao-powershell2/script1.ps1",
-                "research/samples/mrsiyecao-powershell2/Online.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\legit" },
                 { "type": "file", "path": "${SteamPath}\\legit64" },
@@ -411,9 +271,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "steam-apps-manifest-registry", "title": "STEAM Apps Manifest 注册表项", "risk": "high",
-            "sources": [
-                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
-            ],
             "actions": [
                 { "type": "registry-key", "path": "HKCU:\\Software\\Valve\\Steam\\Apps\\3545990", "recurse": true },
                 { "type": "registry-key", "path": "HKCU:\\Software\\Valve\\Steam\\Apps\\2050650", "recurse": true },
@@ -422,10 +279,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "sdl3-voder-family", "title": "SDL3_voder 假入库家族残留 (steamcn.cc)", "risk": "low",
-            "sources": [
-                "research/samples/steamcn.cc/steamcn.cc.001.ps1",
-                "research/samples/steamcn.cc/steamcn.cc.2026-09-30.ps1"
-            ],
             "actions": [
                 { "type": "file", "path": "${SteamPath}\\SDL3_voder.dll" },
                 { "type": "file", "path": "${LOCALAPPDATA}\\SDL3\\cache", "recurse": true }
@@ -433,9 +286,6 @@ $EmbeddedTargetsJson = @'
         },
         {
             "id": "stool-scheduled-tasks", "title": "%APPDATA%\\\\Stool 相关计划任务", "risk": "high",
-            "sources": [
-                "research/samples/steam-run.com/steamcdkey.cn.001.ps1"
-            ],
             "actions": [
                 { "type": "task-contains", "contains": "${APPDATA}\\Stool" },
                 { "type": "task-contains", "contains": "%APPDATA%\\Stool" }
@@ -647,8 +497,6 @@ function ConvertFrom-SpaArguments {
     param([object[]]$Arguments)
 
     $options = @{
-        Risk     = @('low', 'medium', 'high')
-        Only     = @()
         NoPause  = $false
         ScanOnly = $false
         Help     = $false
@@ -659,44 +507,19 @@ function ConvertFrom-SpaArguments {
     }
     $list = @($Arguments)
 
-    for ($i = 0; $i -lt $list.Count; $i++) {
-        $name = [string]$list[$i]
+    foreach ($item in $list) {
+        $name = [string]$item
         if ($name -match '^-(NoPause|ScanOnly|Help|Elevated|InTerminal|NoTerminal)$') {
             $options[$Matches[1]] = $true
         }
         elseif ($name -match '^[-/](\?|h)$') {
             $options.Help = $true
         }
-        elseif ($name -match '^-(Risk|Only)$') {
-            $key = $Matches[1]
-            $i++
-            if ($i -ge $list.Count) { $options.Errors += "$name 缺少参数值"; break }
-            $values = @(@($list[$i]) | ForEach-Object { ([string]$_) -split ',' } |
-                    ForEach-Object { $_.Trim() } | Where-Object { $_ })
-            if ($key -eq 'Risk') {
-                $bad = @($values | Where-Object { @('low', 'medium', 'high') -notcontains $_ })
-                if ($bad.Count -gt 0 -or $values.Count -eq 0) {
-                    $options.Errors += '-Risk 只接受 low,medium,high'
-                    continue
-                }
-            }
-            $options[$key] = $values
-        }
         else {
             $options.Errors += "未知参数: $name"
         }
     }
     return $options
-}
-
-# 把选项还原成命令行参数（提权重启时使用）。
-function ConvertTo-SpaArgumentList {
-    param([hashtable]$Options)
-    $out = @()
-    if ($Options.Risk.Count -lt 3) { $out += '-Risk'; $out += ($Options.Risk -join ',') }
-    if ($Options.Only.Count -gt 0) { $out += '-Only'; $out += ($Options.Only -join ',') }
-    if ($Options.NoPause) { $out += '-NoPause' }
-    return $out
 }
 
 function Test-SpaAdmin {
@@ -818,7 +641,7 @@ function Start-SpaSelf {
         [IO.File]::WriteAllText($file, $SelfText, (New-Object System.Text.UTF8Encoding($true)))
 
         $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $file + '"')) + @($Extra)
-        $argList += @(ConvertTo-SpaArgumentList $Options | ForEach-Object { '"' + $_ + '"' })
+        if ($Options.NoPause) { $argList += '-NoPause' }
         $verb = @{}
         if ($RunAs) { $verb.Verb = 'RunAs' }
         if (Get-Command -Name 'wt.exe' -CommandType Application -ErrorAction SilentlyContinue) {
@@ -1286,11 +1109,9 @@ function Find-SpaHistoryClues {
 #   -> 结束（关闭过 STEAM 时可选"重新打开 STEAM"）
 
 function Show-SpaHelp {
-    Write-Ui '用法：uninstall.ps1 [-ScanOnly] [-Risk low,medium,high] [-Only 规则ID,...] [-NoPause]'
+    Write-Ui '用法：uninstall.ps1 [-ScanOnly] [-NoPause]'
     Write-Ui ''
     Write-Ui '  -ScanOnly   只扫描并列出，不询问、不删除'
-    Write-Ui '  -Risk       只处理指定风险级别的规则（默认全部）'
-    Write-Ui '  -Only       只处理指定 ID 的规则'
     Write-Ui '  -NoPause    结束时不等待回车'
     Write-Ui ''
     Write-Ui '退出码：0 正常  1 部分失败  2 参数错误  4 用户取消  5 需要管理员'
@@ -1342,16 +1163,8 @@ function Get-SpaRiskRank {
 }
 
 function Select-SpaRules {
-    param($Database, [hashtable]$Options)
-    $all = @($Database.rules)
-    foreach ($id in $Options.Only) {
-        if (-not ($all | Where-Object { $_.id -eq $id })) { $Spa.Warnings.Add('未找到规则 ID: ' + $id) }
-    }
-    return @($all | Where-Object {
-            $_.enabled -ne $false -and
-            $Options.Risk -contains $_.risk -and
-            ($Options.Only.Count -eq 0 -or $Options.Only -contains $_.id)
-        })
+    param($Database)
+    return @($Database.rules | Where-Object { $_.enabled -ne $false })
 }
 
 # 扫描所有规则，合并指向同一目标的动作。只读，不修改系统。
@@ -1589,7 +1402,7 @@ function Invoke-SpaMain {
 
     # ---- 扫描（只读）----
     Write-UiSection '扫描' $(if ($Options.Elevated) { '已切换到管理员权限，重新完整扫描' } else { '' })
-    $rules = Select-SpaRules -Database ($EmbeddedTargetsJson | ConvertFrom-Json) -Options $Options
+    $rules = Select-SpaRules -Database ($EmbeddedTargetsJson | ConvertFrom-Json)
     $all = @(Invoke-SpaScan -Rules $rules -Variables $variables)
     $items = @($all | Where-Object { $_.State -eq 'present' })
     $protected = @($all | Where-Object { $_.State -eq 'protected' })
