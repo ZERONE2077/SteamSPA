@@ -16,7 +16,7 @@ if ('中' -ne [string][char]0x4E2D) {
     Write-Warning 'SteamSPA: Chinese text was decoded with the wrong encoding. Download uninstall.ps1 as a file and run it with powershell -File (see README).'
 }
 $SteamSPAReleaseVersion = '4.0'
-$SteamSPAUpdatedAt = '2026-10-31'
+$SteamSPAUpdatedAt = '2026-11-08'
 
 # 规则库：id 不要改（-Only 参数用它）；路径只写样本实际写入的精确位置。
 $EmbeddedTargetsJson = @'
