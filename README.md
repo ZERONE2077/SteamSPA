@@ -20,7 +20,7 @@ SteamSPA 是一个 Windows PowerShell 工具，用于识别、展示并清理 St
 ### 复制到 PowerShell 运行
 
 ```powershell
-$f = "$env:TEMP\SteamSPA.ps1"; iwr https://fastly.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072; $f = "$env:TEMP\SteamSPA.ps1"; iwr https://fastly.jsdelivr.net/gh/ZERONE2077/SteamSPA@main/uninstall.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f
 ```
 
 能访问 GitHub 时把地址换成 `https://raw.githubusercontent.com/ZERONE2077/SteamSPA/main/uninstall.ps1`。
@@ -52,7 +52,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 4. 按类别列出发现项；Valve 签名文件和受保护目录单独列出且不删除。
 5. 确认：`Y` 或回车全部清理，`N` 取消。
 6. STEAM 正在运行时先关闭；先结束进程、删计划任务，再删文件和注册表。清理对象都是非官方残留，不做备份。
-7. 汇总结果。
+7. 汇总结果，并写到 `%TEMP%\SteamSPA-result.txt`（每次覆盖）；有失败项时提示路径，用户反馈问题时发这个文件即可。
 
 ## 维护
 
@@ -68,7 +68,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\uninstall.ps1
 支持的动作类型：`file`、`registry-key`、`registry-value`、`defender-exclusion-path`、
 `defender-exclusion-extension`、`defender-exclusion-process`、`process`、`task`、`task-contains`。
 
-`publish.ps1` 会把脚本里的更新日期改成当天，测试通过后提交推送，并核对线上版本。
+`publish.ps1` 会把脚本里的更新日期改成当天，测试通过后只提交 `uninstall.ps1`、README、tests、tools，推送并核对线上版本。
 本地试跑用 `tools/make-link.ps1` 生成的三个快捷方式（本地 / GitHub / 镜像）。
 
 ## 安全设计

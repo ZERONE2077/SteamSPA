@@ -20,14 +20,17 @@ $mirrors = @(
     $github
 )
 
-# 依次尝试地址（加随机参数避开缓存），下载成功就运行。
+# 依次尝试地址（加随机参数避开缓存），下载完整就运行。
+# 3072 = TLS 1.2：老系统上 5.1 默认只开 TLS 1.0，连不上 GitHub / jsDelivr。
+# 完整的 uninstall.ps1 以 "} @args" 结尾，用它判断没有下载到一半或拿到错误页。
 function Get-DownloadCommand {
     param([string[]]$Urls)
     return (
+        "[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072; " +
         "`$f = Join-Path `$env:TEMP 'SteamSPA.ps1'; `$ok = `$false; " +
         "foreach (`$u in '" + ($Urls -join "','") + "') {" +
         " try { Invoke-WebRequest (`$u + '?' + [guid]::NewGuid().ToString('N')) -OutFile `$f -UseBasicParsing -TimeoutSec 20;" +
-        " if ((Get-Content `$f -Raw -Encoding UTF8) -match 'SteamSPA') { `$ok = `$true; break } } catch {} };" +
+        " if ((Get-Content `$f -Raw -Encoding UTF8).TrimEnd().EndsWith('} @args')) { `$ok = `$true; break } } catch {} };" +
         " if (`$ok) { & `$f } else { Write-Host '下载失败，请检查网络后重试。' -ForegroundColor Red; Read-Host '按回车退出' }"
     )
 }

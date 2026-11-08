@@ -24,7 +24,8 @@ Write-Host '==> 冒烟测试' -ForegroundColor Cyan
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.\tests\SmokeTests.ps1'
 if ($LASTEXITCODE -ne 0) { throw '冒烟测试失败，未发布' }
 
-git add -A
+# 只提交这几个位置，工作区里随手放的临时文件不会被带上去。
+git add -- uninstall.ps1 README.md .gitignore tests tools
 if (@(git diff --cached --name-only).Count -eq 0) { Write-Host '没有改动需要发布。' -ForegroundColor Yellow; exit 0 }
 git commit -m $Message
 if ($LASTEXITCODE -ne 0) { throw 'git commit 失败' }
