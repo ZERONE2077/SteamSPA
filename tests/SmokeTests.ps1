@@ -149,7 +149,11 @@ finally {
 }
 
 Write-Host '== 生成物只扫描运行'
+# uninstall.ps1 输出 UTF-8；按控制台默认编码（中文系统是 GBK）读会乱码，所以读之前切到 UTF-8。
+$prevEncoding = [Console]::OutputEncoding
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'uninstall.ps1') -ScanOnly -NoPause 2>&1 | Out-String
+[Console]::OutputEncoding = $prevEncoding
 Assert ($LASTEXITCODE -eq 0) ('-ScanOnly 退出码 0（实际 ' + $LASTEXITCODE + '）')
 Assert ($out -match '扫描完成') '-ScanOnly 输出包含"扫描完成"'
 $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'uninstall.ps1') -Bogus -NoPause 2>&1 | Out-String
