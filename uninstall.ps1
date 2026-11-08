@@ -2,6 +2,19 @@
 # 单文件：规则和程序都在这里。新增痕迹改下面的 JSON，然后跑 tests/SmokeTests.ps1。
 # 整个程序包在 & { } 里运行：irm | iex 时不会在用户会话里留下函数和变量。
 & {
+# 乱码自检：Windows PowerShell 5.1 的 irm 遇到不声明编码的服务器（jsDelivr 及其镜像都是
+# application/octet-stream）会按 ISO-8859-1 解码，中文全变成 "æ‰«" 这类乱码。
+# ISO-8859-1 和字节一一对应，按它编码回原始字节再按 UTF-8 解码就能还原，然后用还原后的源码重新运行。
+# 除了用来检测的 '中'，这段代码只用 ASCII，乱码时也能正确执行。
+if ('中' -ne [string][char]0x4E2D) {
+    $spaLatin1 = [Text.Encoding]::GetEncoding(28591)
+    if ([Text.Encoding]::UTF8.GetString($spaLatin1.GetBytes('中')) -eq [string][char]0x4E2D) {
+        $spaFixed = [Text.Encoding]::UTF8.GetString($spaLatin1.GetBytes($MyInvocation.MyCommand.ScriptBlock.ToString()))
+        & ([scriptblock]::Create($spaFixed)) @args
+        return
+    }
+    Write-Warning 'SteamSPA: Chinese text was decoded with the wrong encoding. Download uninstall.ps1 as a file and run it with powershell -File (see README).'
+}
 $SteamSPAReleaseVersion = '4.0'
 $SteamSPAUpdatedAt = '2026-10-31'
 

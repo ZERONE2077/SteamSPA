@@ -21,6 +21,13 @@ Assert ($errors.Count -eq 0) ('语法' + $(if ($errors.Count) { ': ' + $errors[0
 $bytes = [IO.File]::ReadAllBytes($script)
 # 5.1 读无 BOM 脚本会按 ANSI 解码，中文乱码。
 Assert ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) '带 UTF-8 BOM'
+# 模拟 5.1 用 irm 从 jsDelivr 取回：整份按 ISO-8859-1 解码。乱码版本必须仍能解析，开头的自检才跑得起来。
+$latin1 = [Text.Encoding]::GetEncoding(28591)
+$garbled = $latin1.GetString($bytes)
+$gTokens = $null; $gErrors = $null
+[void][Management.Automation.Language.Parser]::ParseInput($garbled, [ref]$gTokens, [ref]$gErrors)
+Assert ($gErrors.Count -eq 0) ('乱码版本可解析' + $(if ($gErrors.Count) { ': ' + $gErrors[0].Message }))
+Assert ([Text.Encoding]::UTF8.GetString($latin1.GetBytes($garbled)).TrimStart([char]0xFEFF) -eq $text.TrimStart([char]0xFEFF)) '乱码可按字节还原'
 # 仓库里其他含中文的 .ps1 也一样要带 BOM。
 foreach ($ps1 in Get-ChildItem -LiteralPath (Join-Path $root 'tools'), (Join-Path $root 'tests') -Filter '*.ps1') {
     $b = [IO.File]::ReadAllBytes($ps1.FullName)
